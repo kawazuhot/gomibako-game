@@ -1,0 +1,39 @@
+# macOS
+.DS_Store
+
+# Unity generated
+Library/
+Temp/
+Obj/
+Build/
+Builds/
+Logs/
+UserSettings/
+MemoryCaptures/
+Recordings/
+
+# Unity cache
+.vs/
+.gradle/
+ExportedObj/
+consulo/
+
+# Rider / VS / VS Code
+.idea/
+.vscode/
+*.csproj
+*.sln
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+
+# Crash / logs
+sysinfo.txt
+*.stackdump
+
+# Blender backups
+*.blend1
+*.blend2
+*.blend@
