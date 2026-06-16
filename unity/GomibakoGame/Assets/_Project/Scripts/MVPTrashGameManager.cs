@@ -9,6 +9,7 @@ public class MVPTrashGameManager : MonoBehaviour
     [SerializeField] private Transform throwOrigin;
     [SerializeField] private TrashProjectile trash;
     [SerializeField] private Camera sceneCamera;
+    [SerializeField] private TextMesh successText;
 
     [Header("Throw Settings")]
     [SerializeField] private float minImpulse = 5.5f;
@@ -23,7 +24,10 @@ public class MVPTrashGameManager : MonoBehaviour
     private static void BootstrapOnPlay()
     {
         var existingManager = Object.FindFirstObjectByType<MVPTrashGameManager>();
-        var hasReadableMvp = GameObject.Find("MVP_TrashBin_Rim") != null && GameObject.Find("MVP_Instructions") != null;
+        var hasReadableMvp = GameObject.Find("MVP_CanBin_Hole") != null
+            && GameObject.Find("MVP_Can") != null
+            && GameObject.Find("MVP_Instructions") != null
+            && GameObject.Find("MVP_SuccessText") != null;
         if (existingManager != null && hasReadableMvp)
         {
             return;
@@ -53,6 +57,15 @@ public class MVPTrashGameManager : MonoBehaviour
             trash = CreateTrash(GetSpawnPosition(), transform);
         }
 
+        if (successText == null)
+        {
+            var successObject = GameObject.Find("MVP_SuccessText");
+            if (successObject != null)
+            {
+                successText = successObject.GetComponent<TextMesh>();
+            }
+        }
+
         trash.MarkResettable(this);
         Retry();
     }
@@ -77,20 +90,23 @@ public class MVPTrashGameManager : MonoBehaviour
 
         BuildFloor(root.transform);
         BuildThrowPad(root.transform);
-        BuildTrashBin(root.transform);
+        BuildCanBin(root.transform);
+        BuildVendingMachine(root.transform);
         BuildInstructionText(root.transform, cameraObj);
+        var success = BuildSuccessText(root.transform, cameraObj);
 
         var trashObject = CreateTrash(spawn.transform.position, root.transform);
         var manager = root.AddComponent<MVPTrashGameManager>();
-        manager.Configure(spawn.transform, trashObject, cameraObj);
+        manager.Configure(spawn.transform, trashObject, cameraObj, success);
         return manager;
     }
 
-    public void Configure(Transform origin, TrashProjectile projectile, Camera cameraRef)
+    public void Configure(Transform origin, TrashProjectile projectile, Camera cameraRef, TextMesh successMessage)
     {
         throwOrigin = origin;
         trash = projectile;
         sceneCamera = cameraRef;
+        successText = successMessage;
 
         if (trash != null)
         {
@@ -111,6 +127,7 @@ public class MVPTrashGameManager : MonoBehaviour
         }
 
         trash.ResetState(GetSpawnPosition());
+        SetSuccessVisible(false);
         Physics.SyncTransforms();
     }
 
@@ -119,6 +136,7 @@ public class MVPTrashGameManager : MonoBehaviour
         if (trash != null && trash.IsSuccess)
         {
             Debug.Log("SUCCESS");
+            SetSuccessVisible(true);
         }
     }
 
@@ -216,11 +234,18 @@ public class MVPTrashGameManager : MonoBehaviour
     private static void BuildFloor(Transform parent)
     {
         var floor = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        floor.name = "MVP_Floor";
+        floor.name = "MVP_StreetFloor";
         floor.transform.SetParent(parent);
         floor.transform.position = new Vector3(0f, -0.05f, 3f);
         floor.transform.localScale = new Vector3(14f, 0.1f, 20f);
-        SetColor(floor, new Color(0.72f, 0.74f, 0.72f));
+        SetColor(floor, new Color(0.42f, 0.43f, 0.42f));
+
+        var sidewalk = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        sidewalk.name = "MVP_Sidewalk";
+        sidewalk.transform.SetParent(parent);
+        sidewalk.transform.position = new Vector3(-4.6f, 0.02f, 3f);
+        sidewalk.transform.localScale = new Vector3(3.2f, 0.12f, 20f);
+        SetColor(sidewalk, new Color(0.66f, 0.67f, 0.64f));
     }
 
     private static void BuildThrowPad(Transform parent)
@@ -233,33 +258,69 @@ public class MVPTrashGameManager : MonoBehaviour
         SetColor(pad, new Color(0.25f, 0.45f, 0.75f));
     }
 
-    private static void BuildTrashBin(Transform parent)
+    private static void BuildCanBin(Transform parent)
     {
-        var bin = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        bin.name = "MVP_TrashBin_Body";
+        var bin = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        bin.name = "MVP_CanBin_Body";
         bin.transform.SetParent(parent);
-        bin.transform.position = new Vector3(0f, 0.55f, 8f);
-        bin.transform.localScale = new Vector3(1.35f, 0.55f, 1.35f);
-        SetColor(bin, new Color(0.18f, 0.28f, 0.34f));
+        bin.transform.position = new Vector3(0f, 0.85f, 7.8f);
+        bin.transform.localScale = new Vector3(1.8f, 1.7f, 0.8f);
+        SetColor(bin, new Color(0.12f, 0.44f, 0.58f));
         DestroyComponent(bin.GetComponent<Collider>());
 
-        var rim = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        rim.name = "MVP_TrashBin_Rim";
-        rim.transform.SetParent(parent);
-        rim.transform.position = new Vector3(0f, 1.15f, 8f);
-        rim.transform.localScale = new Vector3(1.55f, 0.08f, 1.55f);
-        SetColor(rim, new Color(0.04f, 0.08f, 0.1f));
-        DestroyComponent(rim.GetComponent<Collider>());
+        var top = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        top.name = "MVP_CanBin_Top";
+        top.transform.SetParent(parent);
+        top.transform.position = new Vector3(0f, 1.74f, 7.8f);
+        top.transform.localScale = new Vector3(1.95f, 0.12f, 0.9f);
+        SetColor(top, new Color(0.08f, 0.28f, 0.36f));
+        DestroyComponent(top.GetComponent<Collider>());
+
+        var hole = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        hole.name = "MVP_CanBin_Hole";
+        hole.transform.SetParent(parent);
+        hole.transform.position = new Vector3(0f, 1.35f, 7.36f);
+        hole.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+        hole.transform.localScale = new Vector3(0.58f, 0.04f, 0.58f);
+        SetColor(hole, Color.black);
+        DestroyComponent(hole.GetComponent<Collider>());
 
         var trigger = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        trigger.name = "MVP_BinTrigger_SUCCESS";
+        trigger.name = "MVP_CanHoleTrigger_SUCCESS";
         trigger.transform.SetParent(parent);
-        trigger.transform.position = new Vector3(0f, 1.2f, 8f);
-        trigger.transform.localScale = new Vector3(1.25f, 2.2f, 1.25f);
+        trigger.transform.position = new Vector3(0f, 1.35f, 7.62f);
+        trigger.transform.localScale = new Vector3(0.9f, 0.9f, 0.65f);
         DestroyComponent(trigger.GetComponent<MeshRenderer>());
         var triggerCollider = trigger.GetComponent<BoxCollider>();
         triggerCollider.isTrigger = true;
         trigger.AddComponent<TrashBinTrigger>();
+    }
+
+    private static void BuildVendingMachine(Transform parent)
+    {
+        var vending = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        vending.name = "MVP_VendingMachine";
+        vending.transform.SetParent(parent);
+        vending.transform.position = new Vector3(2.2f, 1.25f, 7.9f);
+        vending.transform.localScale = new Vector3(1.2f, 2.5f, 0.65f);
+        SetColor(vending, new Color(0.78f, 0.08f, 0.08f));
+        DestroyComponent(vending.GetComponent<Collider>());
+
+        var display = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        display.name = "MVP_VendingMachine_Display";
+        display.transform.SetParent(parent);
+        display.transform.position = new Vector3(2.2f, 1.65f, 7.52f);
+        display.transform.localScale = new Vector3(0.9f, 0.85f, 0.04f);
+        SetColor(display, new Color(0.85f, 0.95f, 1f));
+        DestroyComponent(display.GetComponent<Collider>());
+
+        var slot = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        slot.name = "MVP_VendingMachine_Slot";
+        slot.transform.SetParent(parent);
+        slot.transform.position = new Vector3(2.2f, 0.55f, 7.5f);
+        slot.transform.localScale = new Vector3(0.7f, 0.18f, 0.04f);
+        SetColor(slot, new Color(0.08f, 0.08f, 0.08f));
+        DestroyComponent(slot.GetComponent<Collider>());
     }
 
     private static void BuildInstructionText(Transform parent, Camera cameraObj)
@@ -269,7 +330,7 @@ public class MVPTrashGameManager : MonoBehaviour
         textObject.transform.position = new Vector3(0f, 2.9f, -2.4f);
 
         var text = textObject.AddComponent<TextMesh>();
-        text.text = "Drag and release to throw / R to reset";
+        text.text = "Can Shoot Stage 1 / Drag and release to throw / R to reset";
         text.anchor = TextAnchor.MiddleCenter;
         text.alignment = TextAlignment.Center;
         text.fontSize = 56;
@@ -282,14 +343,47 @@ public class MVPTrashGameManager : MonoBehaviour
         }
     }
 
+    private static TextMesh BuildSuccessText(Transform parent, Camera cameraObj)
+    {
+        var textObject = new GameObject("MVP_SuccessText");
+        textObject.transform.SetParent(parent);
+        textObject.transform.position = new Vector3(0f, 2.1f, 3f);
+
+        var text = textObject.AddComponent<TextMesh>();
+        text.text = "SUCCESS!";
+        text.anchor = TextAnchor.MiddleCenter;
+        text.alignment = TextAlignment.Center;
+        text.fontSize = 80;
+        text.characterSize = 0.12f;
+        text.color = new Color(0.05f, 0.55f, 0.1f);
+
+        if (cameraObj != null)
+        {
+            textObject.transform.rotation = Quaternion.LookRotation(textObject.transform.position - cameraObj.transform.position);
+        }
+
+        textObject.SetActive(false);
+        return text;
+    }
+
     private static TrashProjectile CreateTrash(Vector3 position, Transform parent)
     {
-        var trashObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        trashObject.name = "MVP_Trash";
+        var trashObject = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        trashObject.name = "MVP_Can";
         trashObject.transform.SetParent(parent);
         trashObject.transform.position = position;
-        trashObject.transform.localScale = Vector3.one * 0.48f;
-        SetColor(trashObject, Color.white);
+        trashObject.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+        trashObject.transform.localScale = new Vector3(0.28f, 0.45f, 0.28f);
+        SetColor(trashObject, new Color(0.86f, 0.92f, 0.96f));
+
+        var label = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        label.name = "MVP_Can_Label";
+        label.transform.SetParent(trashObject.transform);
+        label.transform.localPosition = new Vector3(0f, 0.02f, -0.52f);
+        label.transform.localRotation = Quaternion.identity;
+        label.transform.localScale = new Vector3(0.75f, 0.35f, 0.04f);
+        SetColor(label, new Color(0.1f, 0.45f, 0.95f));
+        DestroyComponent(label.GetComponent<Collider>());
 
         var body = trashObject.AddComponent<Rigidbody>();
         body.mass = 0.45f;
@@ -362,6 +456,14 @@ public class MVPTrashGameManager : MonoBehaviour
         else
         {
             Object.DestroyImmediate(target);
+        }
+    }
+
+    private void SetSuccessVisible(bool visible)
+    {
+        if (successText != null)
+        {
+            successText.gameObject.SetActive(visible);
         }
     }
 }

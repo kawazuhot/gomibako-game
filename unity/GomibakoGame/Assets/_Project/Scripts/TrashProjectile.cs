@@ -7,11 +7,13 @@ public class TrashProjectile : MonoBehaviour
 
     private Rigidbody body;
     private MVPTrashGameManager manager;
+    private Quaternion resetRotation;
     public bool IsReadyToThrow { get; private set; } = true;
     public bool IsSuccess { get; set; }
 
     private void Awake()
     {
+        resetRotation = transform.rotation;
         body = GetComponent<Rigidbody>();
         if (body == null)
         {
@@ -51,7 +53,7 @@ public class TrashProjectile : MonoBehaviour
         body.linearVelocity = Vector3.zero;
         body.angularVelocity = Vector3.zero;
         transform.position = position;
-        transform.rotation = Quaternion.identity;
+        transform.rotation = resetRotation;
     }
 
     private void Update()
