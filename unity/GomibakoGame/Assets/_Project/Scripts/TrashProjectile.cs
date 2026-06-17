@@ -10,6 +10,7 @@ public class TrashProjectile : MonoBehaviour
     private Quaternion resetRotation;
     public bool IsReadyToThrow { get; private set; } = true;
     public bool IsSuccess { get; set; }
+    public Vector3 Velocity => body != null ? body.linearVelocity : Vector3.zero;
 
     private void Awake()
     {

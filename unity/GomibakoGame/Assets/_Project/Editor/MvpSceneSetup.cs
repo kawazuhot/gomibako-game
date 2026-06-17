@@ -11,6 +11,7 @@ public static class MvpSceneSetup
     public static void RebuildMvpScene()
     {
         OpenOrCreateMainScene();
+        TrashBinPrefabBuilder.EnsureTrashBinPrefab();
         MVPTrashGameManager.RebuildPlayableScene();
 
         var scene = SceneManager.GetActiveScene();
