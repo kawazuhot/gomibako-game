@@ -64,15 +64,17 @@ public class TrashProjectile : MonoBehaviour
         }
     }
 
-    private void OnTriggerEnter(Collider other)
+    public void MarkSuccess()
     {
-        if (!IsSuccess && other.GetComponent<TrashBinTrigger>() != null)
+        if (IsSuccess)
         {
-            IsSuccess = true;
-            if (manager != null)
-            {
-                manager.OnTrashSuccess();
-            }
+            return;
+        }
+
+        IsSuccess = true;
+        if (manager != null)
+        {
+            manager.OnTrashSuccess();
         }
     }
 }

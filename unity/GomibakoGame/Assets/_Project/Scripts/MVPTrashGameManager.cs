@@ -10,11 +10,26 @@ public class MVPTrashGameManager : MonoBehaviour
     [SerializeField] private TrashProjectile trash;
     [SerializeField] private Camera sceneCamera;
     [SerializeField] private TextMesh successText;
+    [SerializeField] private Transform canTransform;
+    [SerializeField] private Transform visualHoleTransform;
+    [SerializeField] private Transform visualHoleRimTransform;
+    [SerializeField] private Transform holeCenterTransform;
+    [SerializeField] private CenterPassSuccessDetector centerPassDetector;
+    [SerializeField] private LineRenderer pullLine;
 
-    [Header("Throw Settings")]
-    [SerializeField] private float minImpulse = 5.5f;
-    [SerializeField] private float maxImpulse = 13.5f;
-    [SerializeField] private float maxDragPixels = 280f;
+    [Header("Slingshot Throw Settings")]
+    [SerializeField] private float maxPullDistance = 250f;
+    [SerializeField] private float forwardForceMultiplier = 0.05f;
+    [SerializeField] private float upwardForceMultiplier = 0.035f;
+    [SerializeField] private float sideForceMultiplier = 0.035f;
+    [SerializeField] private float minPullDistance = 20f;
+
+    [Header("Can Hole Tuning")]
+    [SerializeField] private float canDiameter = 1f;
+    [SerializeField] private float visualHoleDiameterMultiplier = 1.15f;
+    [SerializeField] private float successCenterRadiusMultiplier = 0.25f;
+    [SerializeField] private float rimThicknessMultiplier = 0.08f;
+    [SerializeField] private float successDepthMultiplier = 0.4f;
 
     private bool isAiming;
     private Vector2 dragStartPos;
@@ -24,7 +39,9 @@ public class MVPTrashGameManager : MonoBehaviour
     private static void BootstrapOnPlay()
     {
         var existingManager = Object.FindFirstObjectByType<MVPTrashGameManager>();
-        var hasReadableMvp = GameObject.Find("MVP_CanBin_Hole") != null
+        var hasReadableMvp = GameObject.Find("MVP_CanBin_HoleRim") != null
+            && GameObject.Find("MVP_CanBin_Hole") != null
+            && GameObject.Find("MVP_HoleCenter") != null
             && GameObject.Find("MVP_Can") != null
             && GameObject.Find("MVP_Instructions") != null
             && GameObject.Find("MVP_SuccessText") != null;
@@ -54,8 +71,16 @@ public class MVPTrashGameManager : MonoBehaviour
 
         if (trash == null)
         {
-            trash = CreateTrash(GetSpawnPosition(), transform);
+            trash = CreateTrash(GetSpawnPosition(), transform, canDiameter);
         }
+
+        if (canTransform == null && trash != null)
+        {
+            canTransform = trash.transform;
+        }
+
+        FindTuningTargetsIfNeeded();
+        EnsurePullLine();
 
         if (successText == null)
         {
@@ -67,7 +92,13 @@ public class MVPTrashGameManager : MonoBehaviour
         }
 
         trash.MarkResettable(this);
+        ApplyCanHoleTuning();
         Retry();
+    }
+
+    private void OnValidate()
+    {
+        ApplyCanHoleTuning();
     }
 
     private void Update()
@@ -81,6 +112,7 @@ public class MVPTrashGameManager : MonoBehaviour
         DestroyIfExists(RootName);
 
         var root = new GameObject(RootName);
+        var manager = root.AddComponent<MVPTrashGameManager>();
         var cameraObj = BuildCamera();
         BuildLight();
 
@@ -90,14 +122,16 @@ public class MVPTrashGameManager : MonoBehaviour
 
         BuildFloor(root.transform);
         BuildThrowPad(root.transform);
-        BuildCanBin(root.transform);
+        BuildCanBin(root.transform, manager);
         BuildVendingMachine(root.transform);
         BuildInstructionText(root.transform, cameraObj);
+        manager.pullLine = BuildPullLine(root.transform);
         var success = BuildSuccessText(root.transform, cameraObj);
 
-        var trashObject = CreateTrash(spawn.transform.position, root.transform);
-        var manager = root.AddComponent<MVPTrashGameManager>();
+        var trashObject = CreateTrash(spawn.transform.position, root.transform, manager.canDiameter);
+        manager.canTransform = trashObject.transform;
         manager.Configure(spawn.transform, trashObject, cameraObj, success);
+        manager.ApplyCanHoleTuning();
         return manager;
     }
 
@@ -112,6 +146,8 @@ public class MVPTrashGameManager : MonoBehaviour
         {
             trash.MarkResettable(this);
         }
+
+        ConfigureCenterPassDetector();
     }
 
     public Vector3 GetSpawnPosition()
@@ -127,6 +163,10 @@ public class MVPTrashGameManager : MonoBehaviour
         }
 
         trash.ResetState(GetSpawnPosition());
+        if (centerPassDetector != null)
+        {
+            centerPassDetector.ResetTracking();
+        }
         SetSuccessVisible(false);
         Physics.SyncTransforms();
     }
@@ -160,6 +200,8 @@ public class MVPTrashGameManager : MonoBehaviour
             isAiming = true;
             dragStartPos = Input.mousePosition;
             nextAimLogTime = 0f;
+            Debug.Log($"MouseDown position={dragStartPos}");
+            UpdatePullLine(Vector3.zero);
         }
 
         if (!isAiming)
@@ -167,35 +209,43 @@ public class MVPTrashGameManager : MonoBehaviour
             return;
         }
 
-        var dragDelta = (Vector2)Input.mousePosition - dragStartPos;
-        var impulse = CalculateImpulse(dragDelta);
-        var direction = CalculateDirection(dragDelta);
+        var pullVector = (Vector2)Input.mousePosition - dragStartPos;
+        var throwForce = CalculateSlingshotForce(pullVector);
+        var pullDistance = Mathf.Min(pullVector.magnitude, maxPullDistance);
+        UpdatePullLine(throwForce);
 
         if (Input.GetMouseButton(0) && Time.time >= nextAimLogTime)
         {
-            Debug.Log($"AIM power={impulse:0.00} direction={direction.ToString("F2")}");
+            Debug.Log($"Pull distance={pullDistance:0.0} force={throwForce.ToString("F2")}");
             nextAimLogTime = Time.time + 0.25f;
         }
 
         if (Input.GetMouseButtonUp(0))
         {
-            Debug.Log($"THROW power={impulse:0.00} direction={direction.ToString("F2")}");
-            trash.Launch(direction * impulse);
+            HidePullLine();
+            if (pullDistance >= minPullDistance)
+            {
+                Debug.Log($"Release force={throwForce.ToString("F2")}");
+                trash.Launch(throwForce);
+            }
+            else
+            {
+                Debug.Log($"Release canceled pullDistance={pullDistance:0.0}");
+            }
             isAiming = false;
         }
     }
 
-    private float CalculateImpulse(Vector2 dragDelta)
+    private Vector3 CalculateSlingshotForce(Vector2 pullVector)
     {
-        var dragRate = Mathf.Clamp01(dragDelta.magnitude / maxDragPixels);
-        return Mathf.Lerp(minImpulse, maxImpulse, dragRate);
-    }
+        var clampedPull = Vector2.ClampMagnitude(pullVector, maxPullDistance);
+        var pullDown = Mathf.Max(0f, -clampedPull.y);
+        var pullSide = clampedPull.x;
+        var forwardForce = pullDown * forwardForceMultiplier;
+        var upwardForce = pullDown * upwardForceMultiplier;
+        var sideForce = -pullSide * sideForceMultiplier;
 
-    private Vector3 CalculateDirection(Vector2 dragDelta)
-    {
-        var horizontal = Mathf.Clamp(dragDelta.x / maxDragPixels, -0.55f, 0.55f);
-        var upward = Mathf.Clamp(0.45f + dragDelta.y / maxDragPixels * 0.35f, 0.25f, 0.75f);
-        return new Vector3(horizontal, upward, 1f).normalized;
+        return Vector3.forward * forwardForce + Vector3.up * upwardForce + Vector3.right * sideForce;
     }
 
     private static Camera BuildCamera()
@@ -258,12 +308,19 @@ public class MVPTrashGameManager : MonoBehaviour
         SetColor(pad, new Color(0.25f, 0.45f, 0.75f));
     }
 
-    private static void BuildCanBin(Transform parent)
+    private static void BuildCanBin(Transform parent, MVPTrashGameManager settings)
     {
+        var safeCanDiameter = Mathf.Max(0.01f, settings.canDiameter);
+        var visualHoleDiameter = safeCanDiameter * Mathf.Max(0.01f, settings.visualHoleDiameterMultiplier);
+        var rimThickness = safeCanDiameter * Mathf.Max(0f, settings.rimThicknessMultiplier);
+        var binCenter = new Vector3(0f, 0.85f, 7.8f);
+        var frontZ = 7.36f;
+        var holeCenter = new Vector3(0f, 1.35f, frontZ);
+
         var bin = GameObject.CreatePrimitive(PrimitiveType.Cube);
         bin.name = "MVP_CanBin_Body";
         bin.transform.SetParent(parent);
-        bin.transform.position = new Vector3(0f, 0.85f, 7.8f);
+        bin.transform.position = binCenter;
         bin.transform.localScale = new Vector3(1.8f, 1.7f, 0.8f);
         SetColor(bin, new Color(0.12f, 0.44f, 0.58f));
         DestroyComponent(bin.GetComponent<Collider>());
@@ -276,24 +333,35 @@ public class MVPTrashGameManager : MonoBehaviour
         SetColor(top, new Color(0.08f, 0.28f, 0.36f));
         DestroyComponent(top.GetComponent<Collider>());
 
+        var rim = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        rim.name = "MVP_CanBin_HoleRim";
+        rim.transform.SetParent(parent);
+        rim.transform.position = holeCenter + new Vector3(0f, 0f, -0.012f);
+        rim.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+        rim.transform.localScale = new Vector3(
+            visualHoleDiameter + rimThickness * 2f,
+            rimThickness,
+            visualHoleDiameter + rimThickness * 2f);
+        SetColor(rim, new Color(0.78f, 0.86f, 0.9f));
+        DestroyComponent(rim.GetComponent<Collider>());
+        settings.visualHoleRimTransform = rim.transform;
+
         var hole = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         hole.name = "MVP_CanBin_Hole";
         hole.transform.SetParent(parent);
-        hole.transform.position = new Vector3(0f, 1.35f, 7.36f);
+        hole.transform.position = holeCenter;
         hole.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
-        hole.transform.localScale = new Vector3(0.58f, 0.04f, 0.58f);
+        hole.transform.localScale = new Vector3(visualHoleDiameter, rimThickness, visualHoleDiameter);
         SetColor(hole, Color.black);
         DestroyComponent(hole.GetComponent<Collider>());
+        settings.visualHoleTransform = hole.transform;
 
-        var trigger = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        trigger.name = "MVP_CanHoleTrigger_SUCCESS";
-        trigger.transform.SetParent(parent);
-        trigger.transform.position = new Vector3(0f, 1.35f, 7.62f);
-        trigger.transform.localScale = new Vector3(0.9f, 0.9f, 0.65f);
-        DestroyComponent(trigger.GetComponent<MeshRenderer>());
-        var triggerCollider = trigger.GetComponent<BoxCollider>();
-        triggerCollider.isTrigger = true;
-        trigger.AddComponent<TrashBinTrigger>();
+        var detectorObject = new GameObject("MVP_HoleCenter");
+        detectorObject.transform.SetParent(parent);
+        detectorObject.transform.position = holeCenter;
+        detectorObject.transform.rotation = Quaternion.identity;
+        settings.holeCenterTransform = detectorObject.transform;
+        settings.centerPassDetector = detectorObject.AddComponent<CenterPassSuccessDetector>();
     }
 
     private static void BuildVendingMachine(Transform parent)
@@ -366,14 +434,38 @@ public class MVPTrashGameManager : MonoBehaviour
         return text;
     }
 
-    private static TrashProjectile CreateTrash(Vector3 position, Transform parent)
+    private static LineRenderer BuildPullLine(Transform parent)
     {
+        var lineObject = new GameObject("MVP_PullDirectionLine");
+        lineObject.transform.SetParent(parent);
+        var line = lineObject.AddComponent<LineRenderer>();
+        line.positionCount = 2;
+        line.startWidth = 0.08f;
+        line.endWidth = 0.02f;
+        line.useWorldSpace = true;
+        line.enabled = false;
+
+        var shader = Shader.Find("Sprites/Default");
+        if (shader != null)
+        {
+            line.sharedMaterial = new Material(shader);
+            line.startColor = new Color(1f, 0.75f, 0.05f);
+            line.endColor = new Color(1f, 0.15f, 0.05f);
+        }
+
+        return line;
+    }
+
+    private static TrashProjectile CreateTrash(Vector3 position, Transform parent, float diameter)
+    {
+        var safeDiameter = Mathf.Max(0.01f, diameter);
+
         var trashObject = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         trashObject.name = "MVP_Can";
         trashObject.transform.SetParent(parent);
         trashObject.transform.position = position;
         trashObject.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
-        trashObject.transform.localScale = new Vector3(0.28f, 0.45f, 0.28f);
+        trashObject.transform.localScale = new Vector3(safeDiameter, safeDiameter * 0.8f, safeDiameter);
         SetColor(trashObject, new Color(0.86f, 0.92f, 0.96f));
 
         var label = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -381,7 +473,7 @@ public class MVPTrashGameManager : MonoBehaviour
         label.transform.SetParent(trashObject.transform);
         label.transform.localPosition = new Vector3(0f, 0.02f, -0.52f);
         label.transform.localRotation = Quaternion.identity;
-        label.transform.localScale = new Vector3(0.75f, 0.35f, 0.04f);
+        label.transform.localScale = new Vector3(0.7f, 0.32f, 0.04f);
         SetColor(label, new Color(0.1f, 0.45f, 0.95f));
         DestroyComponent(label.GetComponent<Collider>());
 
@@ -464,6 +556,117 @@ public class MVPTrashGameManager : MonoBehaviour
         if (successText != null)
         {
             successText.gameObject.SetActive(visible);
+        }
+    }
+
+    private void FindTuningTargetsIfNeeded()
+    {
+        if (visualHoleTransform == null)
+        {
+            var found = GameObject.Find("MVP_CanBin_Hole");
+            visualHoleTransform = found != null ? found.transform : null;
+        }
+
+        if (visualHoleRimTransform == null)
+        {
+            var found = GameObject.Find("MVP_CanBin_HoleRim");
+            visualHoleRimTransform = found != null ? found.transform : null;
+        }
+
+        if (holeCenterTransform == null)
+        {
+            var found = GameObject.Find("MVP_HoleCenter");
+            holeCenterTransform = found != null ? found.transform : null;
+        }
+
+        if (centerPassDetector == null && holeCenterTransform != null)
+        {
+            centerPassDetector = holeCenterTransform.GetComponent<CenterPassSuccessDetector>();
+        }
+
+        if (pullLine == null)
+        {
+            var found = GameObject.Find("MVP_PullDirectionLine");
+            pullLine = found != null ? found.GetComponent<LineRenderer>() : null;
+        }
+    }
+
+    private void ApplyCanHoleTuning()
+    {
+        var safeCanDiameter = Mathf.Max(0.01f, canDiameter);
+        var visualHoleDiameter = safeCanDiameter * Mathf.Max(0.01f, visualHoleDiameterMultiplier);
+        var rimThickness = safeCanDiameter * Mathf.Max(0f, rimThicknessMultiplier);
+
+        if (canTransform != null)
+        {
+            canTransform.localScale = new Vector3(safeCanDiameter, safeCanDiameter * 0.8f, safeCanDiameter);
+        }
+
+        if (visualHoleRimTransform != null)
+        {
+            visualHoleRimTransform.localScale = new Vector3(
+                visualHoleDiameter + rimThickness * 2f,
+                rimThickness,
+                visualHoleDiameter + rimThickness * 2f);
+        }
+
+        if (visualHoleTransform != null)
+        {
+            visualHoleTransform.localScale = new Vector3(visualHoleDiameter, rimThickness, visualHoleDiameter);
+        }
+
+        if (holeCenterTransform != null && visualHoleTransform != null)
+        {
+            holeCenterTransform.position = visualHoleTransform.position;
+            holeCenterTransform.rotation = Quaternion.identity;
+        }
+
+        ConfigureCenterPassDetector();
+    }
+
+    private void ConfigureCenterPassDetector()
+    {
+        if (centerPassDetector == null)
+        {
+            return;
+        }
+
+        centerPassDetector.Configure(trash, canDiameter, successCenterRadiusMultiplier, successDepthMultiplier);
+    }
+
+    private void EnsurePullLine()
+    {
+        if (pullLine == null)
+        {
+            pullLine = BuildPullLine(transform);
+        }
+
+        HidePullLine();
+    }
+
+    private void UpdatePullLine(Vector3 throwForce)
+    {
+        if (pullLine == null || canTransform == null)
+        {
+            return;
+        }
+
+        var start = canTransform.position + Vector3.up * 0.35f;
+        var forceMagnitude = throwForce.magnitude;
+        var end = forceMagnitude > 0.001f
+            ? start + throwForce.normalized * Mathf.Clamp(forceMagnitude * 0.22f, 0.2f, 3.0f)
+            : start;
+
+        pullLine.SetPosition(0, start);
+        pullLine.SetPosition(1, end);
+        pullLine.enabled = true;
+    }
+
+    private void HidePullLine()
+    {
+        if (pullLine != null)
+        {
+            pullLine.enabled = false;
         }
     }
 }
