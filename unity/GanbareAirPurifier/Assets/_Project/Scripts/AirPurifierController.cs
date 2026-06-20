@@ -13,6 +13,7 @@ public class AirPurifierController : MonoBehaviour
 
     private Sequence activeSequence;
     private Vector3 baseScale = Vector3.one;
+    private bool isFailAnimating;
 
     public RectTransform RectTransform => rectTransform;
     public Vector2 SuctionPoint
@@ -45,6 +46,7 @@ public class AirPurifierController : MonoBehaviour
     public void SetNormal()
     {
         activeSequence?.Kill();
+        isFailAnimating = false;
         SetSprite(normalSprite);
         if (rectTransform != null)
         {
@@ -65,6 +67,11 @@ public class AirPurifierController : MonoBehaviour
     public void StartSuctionHold()
     {
         if (rectTransform == null)
+        {
+            return;
+        }
+
+        if (isFailAnimating)
         {
             return;
         }
@@ -91,6 +98,11 @@ public class AirPurifierController : MonoBehaviour
             return;
         }
 
+        if (isFailAnimating)
+        {
+            return;
+        }
+
         SetSuction();
         activeSequence?.Kill();
         rectTransform.localScale = baseScale;
@@ -108,12 +120,17 @@ public class AirPurifierController : MonoBehaviour
         }
 
         SetFail();
+        isFailAnimating = true;
         activeSequence?.Kill();
         rectTransform.localScale = baseScale;
         activeSequence = DOTween.Sequence()
             .Append(rectTransform.DOShakeAnchorPos(0.36f, new Vector2(34f, 0f), 18, 80f))
             .Join(rectTransform.DOScale(new Vector3(baseScale.x * 1.10f, baseScale.y * 0.92f, baseScale.z), 0.12f).SetLoops(2, LoopType.Yoyo))
-            .AppendCallback(() => rectTransform.localScale = baseScale);
+            .AppendCallback(() =>
+            {
+                isFailAnimating = false;
+                rectTransform.localScale = baseScale;
+            });
     }
 
     private void SetSprite(Sprite sprite)

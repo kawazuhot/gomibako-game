@@ -3,23 +3,28 @@ using UnityEngine;
 
 public class ItemSpawner : MonoBehaviour
 {
-    [SerializeField] private float spawnInterval = 1.25f;
-    [SerializeField] private float moveDuration = 6.2f;
+    [SerializeField] private Vector2 normalSpawnIntervalRange = new Vector2(1.1f, 1.7f);
+    [SerializeField] private Vector2 fastSpawnIntervalRange = new Vector2(0.7f, 1.1f);
+    [SerializeField] private float moveDuration = 6.0f;
     [SerializeField] private float spawnX = 650f;
     [SerializeField] private float despawnX = -650f;
-    [SerializeField] private Vector2 spawnYRange = new Vector2(-100f, 160f);
+    [SerializeField] private float topLaneY = 180f;
+    [SerializeField] private float bottomLaneY = -180f;
+    [SerializeField] private float laneRandomYRange = 60f;
 
     private GameManager gameManager;
     private RectTransform itemLayer;
     private ItemController itemTemplate;
-    private float spawnTimer;
+    private float topLaneSpawnTimer;
+    private float bottomLaneSpawnTimer;
 
     public void Configure(GameManager manager, RectTransform layer, ItemController template)
     {
         gameManager = manager;
         itemLayer = layer;
         itemTemplate = template;
-        spawnTimer = 0.15f;
+        topLaneSpawnTimer = 0.15f;
+        bottomLaneSpawnTimer = 0.55f;
     }
 
     public void Tick(float deltaTime)
@@ -29,17 +34,23 @@ public class ItemSpawner : MonoBehaviour
             return;
         }
 
-        spawnTimer -= deltaTime;
-        if (spawnTimer > 0f)
+        topLaneSpawnTimer -= deltaTime;
+        bottomLaneSpawnTimer -= deltaTime;
+
+        if (topLaneSpawnTimer <= 0f)
         {
-            return;
+            SpawnItem(GetRandomLaneY(topLaneY));
+            topLaneSpawnTimer = GetNextSpawnInterval();
         }
 
-        SpawnItem();
-        spawnTimer = spawnInterval;
+        if (bottomLaneSpawnTimer <= 0f)
+        {
+            SpawnItem(GetRandomLaneY(bottomLaneY));
+            bottomLaneSpawnTimer = GetNextSpawnInterval();
+        }
     }
 
-    private void SpawnItem()
+    private void SpawnItem(float laneY)
     {
         var pool = gameManager.GetCurrentSpawnPool();
         if (pool == null || pool.Count == 0)
@@ -50,9 +61,19 @@ public class ItemSpawner : MonoBehaviour
         var data = pool[Random.Range(0, pool.Count)];
         var item = Instantiate(itemTemplate, itemLayer);
         item.gameObject.SetActive(true);
-        var y = Random.Range(spawnYRange.x, spawnYRange.y);
         var duration = Mathf.Max(2.2f, moveDuration - gameManager.CurrentSuctionLevel * 0.18f);
-        item.Initialize(data, gameManager.CurrentSuctionLevel, new Vector2(spawnX, y), despawnX, duration, gameManager.HandleItemMissed);
+        item.Initialize(data, gameManager.CurrentSuctionLevel, new Vector2(spawnX, laneY), despawnX, duration, gameManager.HandleItemMissed);
         gameManager.RegisterItem(item);
+    }
+
+    private float GetNextSpawnInterval()
+    {
+        var range = gameManager.IsFastForwardActive ? fastSpawnIntervalRange : normalSpawnIntervalRange;
+        return Random.Range(range.x, range.y);
+    }
+
+    private float GetRandomLaneY(float centerY)
+    {
+        return Random.Range(centerY - laneRandomYRange, centerY + laneRandomYRange);
     }
 }

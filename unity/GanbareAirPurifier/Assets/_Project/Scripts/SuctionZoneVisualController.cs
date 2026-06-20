@@ -9,10 +9,10 @@ public class SuctionZoneVisualController : MonoBehaviour
 
     private Sequence pulseSequence;
     private Sequence flashSequence;
-    private Color idleColor = new Color(1f, 0.16f, 0.16f, 0.72f);
-    private Color activeColor = new Color(1f, 0.34f, 0.18f, 0.95f);
-    private Color suckingColor = new Color(1f, 0.12f, 0.12f, 0.95f);
-    private Color failColor = new Color(1f, 0.02f, 0.02f, 1f);
+    private Color idleColor = new Color(1f, 0.16f, 0.16f, 0.45f);
+    private Color activeColor = new Color(1f, 0.28f, 0.18f, 0.80f);
+    private Color suckingColor = new Color(1f, 0.12f, 0.12f, 0.65f);
+    private Color failColor = new Color(1f, 0.02f, 0.02f, 0.82f);
 
     public void Configure(RectTransform targetRoot, Image[] images)
     {

@@ -13,9 +13,9 @@ public class SuctionManager : MonoBehaviour
 
     private GameManager gameManager;
     private AirPurifierController airPurifier;
-    private bool isBusy;
+    private int activeSuctionCount;
 
-    public bool IsBusy => isBusy;
+    public bool IsBusy => activeSuctionCount > 0;
 
     public void Configure(GameManager manager, AirPurifierController purifier)
     {
@@ -25,13 +25,13 @@ public class SuctionManager : MonoBehaviour
 
     public void TrySuck(ItemController target)
     {
-        if (isBusy || target == null || airPurifier == null)
+        if (target == null || airPurifier == null || !target.IsAvailable)
         {
             return;
         }
 
         target.MarkResolving();
-        isBusy = true;
+        activeSuctionCount++;
 
         var success = target.Data.RequiredLevel <= gameManager.CurrentSuctionLevel;
         if (success)
@@ -81,7 +81,7 @@ public class SuctionManager : MonoBehaviour
 
     private void Complete(ItemController item, bool success)
     {
-        isBusy = false;
+        activeSuctionCount = Mathf.Max(0, activeSuctionCount - 1);
         gameManager.ResolveSuction(item, success);
     }
 }

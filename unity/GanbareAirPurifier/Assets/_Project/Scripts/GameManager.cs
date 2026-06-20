@@ -63,6 +63,7 @@ public class GameManager : MonoBehaviour
     private float suppressPointerSuckUntilRealtime;
 
     public int CurrentSuctionLevel => gaugeManager.SuctionLevel;
+    public bool IsFastForwardActive => isFastForwardEnabled;
     public bool IsTimeUp => timerManager.IsFinished;
     private float GameplaySpeedMultiplier => isFastForwardEnabled ? FastForwardTimeScale : NormalTimeScale;
 
@@ -134,7 +135,7 @@ public class GameManager : MonoBehaviour
             EndSuctionHold();
         }
 
-        itemSpawner.Tick(Time.deltaTime * GameplaySpeedMultiplier);
+        itemSpawner.Tick(Time.deltaTime);
         UpdateCandidateHighlight();
         HandleHeldSuction();
         HandleInput();
@@ -167,7 +168,7 @@ public class GameManager : MonoBehaviour
 
     public void TrySuck()
     {
-        if (isStageTransitioning || suctionManager.IsBusy || IsTimeUp)
+        if (isStageTransitioning || IsTimeUp)
         {
             return;
         }
@@ -192,28 +193,23 @@ public class GameManager : MonoBehaviour
 
         isSuctionHeld = true;
         suctionZoneVisual?.SetSucking();
-        if (!suctionManager.IsBusy)
-        {
-            airPurifier.StartSuctionHold();
-        }
+        airPurifier.StartSuctionHold();
     }
 
     public void EndSuctionHold()
     {
         isSuctionHeld = false;
-        if (!suctionManager.IsBusy)
-        {
-            if (highlightedItem != null)
-            {
-                suctionZoneVisual?.SetTargetInRange();
-            }
-            else
-            {
-                suctionZoneVisual?.SetIdle();
-            }
 
-            airPurifier.StopSuctionHold();
+        if (highlightedItem != null)
+        {
+            suctionZoneVisual?.SetTargetInRange();
         }
+        else
+        {
+            suctionZoneVisual?.SetIdle();
+        }
+
+        airPurifier.StopSuctionHold();
     }
 
     public void ResolveSuction(ItemController item, bool success)
@@ -316,16 +312,16 @@ public class GameManager : MonoBehaviour
         backgroundController = CreateBackgroundController(root, homeStageBackgroundSprite);
         CreatePanel("Play_Lane", root, new Vector2(0f, 0f), new Vector2(1080f, 520f), new Color(1f, 0.84f, 0.42f, 0.32f), false);
 
-        suctionZone = CreateRect("SuctionZoneRoot", root, new Vector2(0f, 30f), new Vector2(suctionZoneRadius * 2f, suctionZoneRadius * 2f));
-        suctionZoneVisual = CreateSuctionZoneVisual(suctionZone, suctionZoneRadius);
-
-        targetMarkerController = CreateTargetMarkerInputArea("TargetMarker_InputArea", root, new Vector2(0f, 40f), new Vector2(1080f, 1120f), this, suctionZone);
-
         itemLayer = CreateRect("ItemLayer", root, Vector2.zero, new Vector2(1080f, 1920f));
         itemTemplate = CreateItemTemplate(itemLayer);
         itemTemplate.gameObject.SetActive(false);
 
         airPurifier = CreateAirPurifier(root, airPurifierNormalSprite, airPurifierSuctionSprite, airPurifierFailSprite);
+
+        suctionZone = CreateRect("SuctionZoneRoot", root, new Vector2(0f, 30f), new Vector2(suctionZoneRadius * 2f, suctionZoneRadius * 2f));
+        suctionZoneVisual = CreateSuctionZoneVisual(suctionZone, suctionZoneRadius);
+
+        targetMarkerController = CreateTargetMarkerInputArea("TargetMarker_InputArea", root, new Vector2(0f, 40f), new Vector2(1080f, 1120f), this, suctionZone);
 
         timeText = CreateText("TIME_Text", root, "TIME 90", new Vector2(-390f, 830f), new Vector2(260f, 70f), 42, Color.white, TextAnchor.MiddleLeft);
         scoreText = CreateText("SCORE_Text", root, "SCORE 0", new Vector2(-390f, 760f), new Vector2(320f, 70f), 36, Color.white, TextAnchor.MiddleLeft);
@@ -383,7 +379,7 @@ public class GameManager : MonoBehaviour
         }
 
         var hasTarget = highlightedItem != null;
-        if (hasTarget == lastHadTargetInRange || suctionZoneVisual == null || isSuctionHeld || suctionManager.IsBusy)
+        if (hasTarget == lastHadTargetInRange || suctionZoneVisual == null || isSuctionHeld)
         {
             lastHadTargetInRange = hasTarget;
             return;
@@ -449,7 +445,7 @@ public class GameManager : MonoBehaviour
 
     private void HandleHeldSuction()
     {
-        if (isStageTransitioning || !isSuctionHeld || suctionManager.IsBusy || IsTimeUp)
+        if (isStageTransitioning || !isSuctionHeld || IsTimeUp)
         {
             return;
         }
