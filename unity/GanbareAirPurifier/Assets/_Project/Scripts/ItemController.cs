@@ -53,7 +53,9 @@ public class ItemController : MonoBehaviour
 
         if (fillImage != null)
         {
-            fillImage.color = data.Color;
+            fillImage.sprite = data.Sprite;
+            fillImage.preserveAspect = data.Sprite != null;
+            fillImage.color = data.Sprite != null ? Color.white : data.Color;
         }
 
         if (borderImage != null)

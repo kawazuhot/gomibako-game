@@ -12,7 +12,6 @@ public class GameManager : MonoBehaviour
 {
     private const float InitialTime = 90f;
     private const float PenaltySeconds = 5f;
-    private const float GaugeGain = 34f;
     private const float NormalTimeScale = 1f;
     private const float FastForwardTimeScale = 2.5f;
 
@@ -104,6 +103,7 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
+        stageManager.Initialize(ItemDatabase.LoadDefault());
         scoreManager.Reset();
         comboManager.Reset();
         gaugeManager.Reset();
@@ -219,12 +219,12 @@ public class GameManager : MonoBehaviour
         if (success)
         {
             var combo = comboManager.AddCombo();
-            scoreManager.AddSuccessScore(item.Data.RequiredLevel, combo);
+            scoreManager.AddSuccessScore(item.Data.Score, combo);
             var previousStage = stageManager.CurrentStage;
-            var leveledUp = gaugeManager.AddGauge(GaugeGain);
+            var leveledUp = gaugeManager.AddGauge(item.Data.GaugeGain);
             if (leveledUp)
             {
-                var nextStage = gaugeManager.SuctionLevel >= 4 ? PurifierStage.City : PurifierStage.Home;
+                var nextStage = StageManager.GetStageForLevel(gaugeManager.SuctionLevel);
                 var stageChanged = previousStage != nextStage;
                 if (stageChanged)
                 {
@@ -525,7 +525,7 @@ public class GameManager : MonoBehaviour
         ClearActiveItems();
         stageManager.ApplyLevel(gaugeManager.SuctionLevel);
         backgroundController.SetStreetBackground();
-        resultText.text = "街ステージ!";
+        resultText.text = $"{stageManager.CurrentStageName}!";
         UpdateUi();
 
         if (fadeController != null)
@@ -534,7 +534,7 @@ public class GameManager : MonoBehaviour
         }
 
         isStageTransitioning = false;
-        resultText.text = "街ステージ!";
+        resultText.text = $"{stageManager.CurrentStageName}!";
     }
 
     private void ClearActiveItems()

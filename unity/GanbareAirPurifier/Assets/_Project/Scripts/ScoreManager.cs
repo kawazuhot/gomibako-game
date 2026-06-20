@@ -7,9 +7,9 @@ public class ScoreManager
         Score = 0;
     }
 
-    public int AddSuccessScore(int requiredLevel, int combo)
+    public int AddSuccessScore(int baseScore, int combo)
     {
-        var gained = requiredLevel * 100 + combo * 15;
+        var gained = baseScore + combo * 15;
         Score += gained;
         return gained;
     }

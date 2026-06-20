@@ -3,6 +3,7 @@ using UnityEngine;
 public class GaugeManager
 {
     private const float MaxGauge = 100f;
+    private const int MaxSuctionLevel = 14;
 
     public float Gauge { get; private set; }
     public int SuctionLevel { get; private set; } = 1;
@@ -16,7 +17,7 @@ public class GaugeManager
 
     public bool AddGauge(float amount)
     {
-        if (SuctionLevel >= 6)
+        if (SuctionLevel >= MaxSuctionLevel)
         {
             Gauge = Mathf.Min(MaxGauge, Gauge + amount);
             return false;

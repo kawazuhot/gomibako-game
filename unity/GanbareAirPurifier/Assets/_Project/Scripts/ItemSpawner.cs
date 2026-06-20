@@ -17,6 +17,7 @@ public class ItemSpawner : MonoBehaviour
     private ItemController itemTemplate;
     private float topLaneSpawnTimer;
     private float bottomLaneSpawnTimer;
+    private float nextNoCandidateLogTime;
 
     public void Configure(GameManager manager, RectTransform layer, ItemController template)
     {
@@ -55,10 +56,16 @@ public class ItemSpawner : MonoBehaviour
         var pool = gameManager.GetCurrentSpawnPool();
         if (pool == null || pool.Count == 0)
         {
+            if (Time.realtimeSinceStartup >= nextNoCandidateLogTime)
+            {
+                Debug.LogWarning($"[ItemSpawner] No spawn candidates for stage: {StageManager.GetStageForLevel(gameManager.CurrentSuctionLevel)}, Lv={gameManager.CurrentSuctionLevel}");
+                nextNoCandidateLogTime = Time.realtimeSinceStartup + 2f;
+            }
             return;
         }
 
-        var data = pool[Random.Range(0, pool.Count)];
+        var data = ChooseWeightedItem(pool);
+        Debug.Log($"[ItemSpawner] Selected item: {data.Id} / {data.DisplayName} / Lv{data.RequiredLevel} / {data.SpriteName} / {(data.Sprite != null ? "sprite found" : "placeholder used")}");
         var item = Instantiate(itemTemplate, itemLayer);
         item.gameObject.SetActive(true);
         var duration = Mathf.Max(2.2f, moveDuration - gameManager.CurrentSuctionLevel * 0.18f);
@@ -75,5 +82,31 @@ public class ItemSpawner : MonoBehaviour
     private float GetRandomLaneY(float centerY)
     {
         return Random.Range(centerY - laneRandomYRange, centerY + laneRandomYRange);
+    }
+
+    private static ItemData ChooseWeightedItem(IReadOnlyList<ItemData> pool)
+    {
+        var totalWeight = 0;
+        for (var i = 0; i < pool.Count; i++)
+        {
+            totalWeight += Mathf.Max(0, pool[i].SpawnWeight);
+        }
+
+        if (totalWeight <= 0)
+        {
+            return pool[Random.Range(0, pool.Count)];
+        }
+
+        var roll = Random.Range(0, totalWeight);
+        for (var i = 0; i < pool.Count; i++)
+        {
+            roll -= Mathf.Max(0, pool[i].SpawnWeight);
+            if (roll < 0)
+            {
+                return pool[i];
+            }
+        }
+
+        return pool[pool.Count - 1];
     }
 }
