@@ -44,7 +44,7 @@ public class ItemData
         GaugeGain = gaugeGain;
         SpawnWeight = Mathf.Max(0, spawnWeight);
         SpriteName = spriteName;
-        BaseScale = GetScale(sizeCategory);
+        BaseScale = stage == PurifierStage.Home ? GetHomeScale(requiredLevel) : GetScale(sizeCategory);
         Color = GetPlaceholderColor(stage, requiredLevel);
     }
 
@@ -62,6 +62,21 @@ public class ItemData
                 return 2.20f;
             default:
                 return 1.00f;
+        }
+    }
+
+    private static float GetHomeScale(int requiredLevel)
+    {
+        switch (requiredLevel)
+        {
+            case 1:
+                return 1.00f;
+            case 2:
+                return 2.00f;
+            case 3:
+                return 3.00f;
+            default:
+                return GetScale(SizeCategory.Huge);
         }
     }
 

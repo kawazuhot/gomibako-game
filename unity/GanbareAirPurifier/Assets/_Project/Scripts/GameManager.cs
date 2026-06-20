@@ -785,15 +785,30 @@ public class GameManager : MonoBehaviour
         outline.effectDistance = new Vector2(5f, -5f);
         var fill = CreatePanel("Fill", border.rectTransform, Vector2.zero, new Vector2(136f, 78f), new Color(1f, 0.7f, 0.3f), false);
         var label = CreateText("Label", border.rectTransform, "Item", Vector2.zero, new Vector2(140f, 90f), 28, new Color(0.14f, 0.18f, 0.26f), TextAnchor.MiddleCenter);
+        var badge = CreatePanel("LevelBadge", border.rectTransform, new Vector2(58f, 34f), new Vector2(104f, 50f), new Color(0.16f, 0.72f, 0.30f, 0.96f), false);
+        var badgeOutline = badge.gameObject.AddComponent<Outline>();
+        badgeOutline.effectColor = Color.white;
+        badgeOutline.effectDistance = new Vector2(7f, -7f);
+        var badgeShadow = badge.gameObject.AddComponent<Shadow>();
+        badgeShadow.effectColor = new Color(0f, 0f, 0f, 0.35f);
+        badgeShadow.effectDistance = new Vector2(5f, -5f);
+        var badgeText = CreateText("LevelBadge_Text", badge.rectTransform, "★ Lv1", Vector2.zero, new Vector2(112f, 52f), 28, Color.white, TextAnchor.MiddleCenter);
+        var badgeTextOutline = badgeText.gameObject.GetComponent<Outline>();
+        if (badgeTextOutline != null)
+        {
+            badgeTextOutline.effectColor = new Color(0.04f, 0.04f, 0.06f, 0.92f);
+            badgeTextOutline.effectDistance = new Vector2(3f, -3f);
+        }
         label.transform.SetAsLastSibling();
+        badge.transform.SetAsLastSibling();
         var item = border.gameObject.AddComponent<ItemController>();
-        item.Configure(border.rectTransform, border, fill, label, outline);
+        item.Configure(border.rectTransform, border, fill, label, badge, badgeText, outline);
         return item;
     }
 
     private static AirPurifierController CreateAirPurifier(RectTransform parent, Sprite normalSprite, Sprite suctionSprite, Sprite failSprite)
     {
-        var rootImage = CreatePanel("AirPurifier", parent, new Vector2(0f, -590f), new Vector2(600f, 600f), Color.white, false);
+        var rootImage = CreatePanel("AirPurifier", parent, new Vector2(0f, -590f), new Vector2(660f, 660f), Color.white, false);
         rootImage.sprite = normalSprite;
         rootImage.preserveAspect = true;
 
@@ -804,7 +819,7 @@ public class GameManager : MonoBehaviour
             CreatePanel("Fallback_Intake", body.rectTransform, new Vector2(0f, 78f), new Vector2(160f, 28f), new Color(0.32f, 0.72f, 1f), false);
         }
 
-        var suctionPoint = CreateRect("SuctionPoint", rootImage.rectTransform, new Vector2(0f, 280f), new Vector2(10f, 10f));
+        var suctionPoint = CreateRect("SuctionPoint", rootImage.rectTransform, new Vector2(0f, 308f), new Vector2(10f, 10f));
         var controller = rootImage.gameObject.AddComponent<AirPurifierController>();
         controller.Configure(rootImage.rectTransform, suctionPoint, rootImage, normalSprite, suctionSprite, failSprite);
         return controller;

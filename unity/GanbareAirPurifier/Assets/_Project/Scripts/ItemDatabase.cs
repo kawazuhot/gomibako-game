@@ -2,10 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 public class ItemDatabase
 {
     private const string CsvRelativePath = "_Project/Data/CSV/ItemMaster.csv";
+    private static readonly string[] SpriteSearchFolders = { "Assets/_Project/Art/Items" };
     private static readonly HashSet<string> WarnedMissingSprites = new HashSet<string>();
 
     private readonly Dictionary<PurifierStage, List<ItemData>> itemsByStage = new Dictionary<PurifierStage, List<ItemData>>();
@@ -121,6 +125,12 @@ public class ItemDatabase
         }
 
         var sprite = Resources.Load<Sprite>(spriteName);
+#if UNITY_EDITOR
+        if (sprite == null)
+        {
+            sprite = LoadEditorSprite(spriteName);
+        }
+#endif
         if (sprite == null && WarnedMissingSprites.Add(spriteName))
         {
             Debug.LogWarning($"[ItemDatabase] Item sprite not found, using placeholder: {spriteName}");
@@ -128,4 +138,42 @@ public class ItemDatabase
 
         return sprite;
     }
+
+#if UNITY_EDITOR
+    private static Sprite LoadEditorSprite(string spriteName)
+    {
+        var guids = AssetDatabase.FindAssets($"{spriteName} t:Texture2D", SpriteSearchFolders);
+        if (guids == null || guids.Length == 0)
+        {
+            return null;
+        }
+
+        foreach (var guid in guids)
+        {
+            var path = AssetDatabase.GUIDToAssetPath(guid);
+            var fileName = Path.GetFileNameWithoutExtension(path);
+            if (!string.Equals(fileName, spriteName, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (sprite != null)
+            {
+                return sprite;
+            }
+
+            var assets = AssetDatabase.LoadAllAssetsAtPath(path);
+            foreach (var asset in assets)
+            {
+                if (asset is Sprite childSprite)
+                {
+                    return childSprite;
+                }
+            }
+        }
+
+        return null;
+    }
+#endif
 }
