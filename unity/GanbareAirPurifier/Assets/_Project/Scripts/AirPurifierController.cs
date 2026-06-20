@@ -11,9 +11,13 @@ public class AirPurifierController : MonoBehaviour
     [SerializeField] private Sprite suctionSprite;
     [SerializeField] private Sprite failSprite;
 
-    private Sequence activeSequence;
+    private Sequence failSequence;
+    private Tween idleBreathingTween;
+    private Tween suctionShakeTween;
     private Vector3 baseScale = Vector3.one;
+    private Vector2 baseAnchoredPosition;
     private bool isFailAnimating;
+    private bool isSuctionHolding;
 
     public RectTransform RectTransform => rectTransform;
     public Vector2 SuctionPoint
@@ -40,18 +44,22 @@ public class AirPurifierController : MonoBehaviour
         suctionSprite = suction;
         failSprite = fail;
         baseScale = rectTransform != null ? rectTransform.localScale : Vector3.one;
+        baseAnchoredPosition = rectTransform != null ? rectTransform.anchoredPosition : Vector2.zero;
         SetNormal();
     }
 
     public void SetNormal()
     {
-        activeSequence?.Kill();
+        StopAllMotion();
         isFailAnimating = false;
+        isSuctionHolding = false;
         SetSprite(normalSprite);
         if (rectTransform != null)
         {
             rectTransform.localScale = baseScale;
+            rectTransform.anchoredPosition = baseAnchoredPosition;
         }
+        StartIdleBreathing();
     }
 
     public void SetSuction()
@@ -76,18 +84,23 @@ public class AirPurifierController : MonoBehaviour
             return;
         }
 
+        isSuctionHolding = true;
         SetSuction();
-        activeSequence?.Kill();
+        StopIdleBreathing();
+        StopSuctionShake();
         rectTransform.localScale = baseScale;
-        activeSequence = DOTween.Sequence()
-            .Append(rectTransform.DOScale(new Vector3(baseScale.x * 1.04f, baseScale.y * 1.12f, baseScale.z), 0.18f))
-            .Append(rectTransform.DOScale(baseScale * 1.03f, 0.18f))
-            .Append(rectTransform.DOScale(baseScale, 0.18f))
-            .SetLoops(-1, LoopType.Restart);
+        rectTransform.anchoredPosition = baseAnchoredPosition;
+        StartSuctionShake();
     }
 
     public void StopSuctionHold()
     {
+        isSuctionHolding = false;
+        if (isFailAnimating)
+        {
+            return;
+        }
+
         SetNormal();
     }
 
@@ -104,12 +117,10 @@ public class AirPurifierController : MonoBehaviour
         }
 
         SetSuction();
-        activeSequence?.Kill();
-        rectTransform.localScale = baseScale;
-        activeSequence = DOTween.Sequence()
-            .Append(rectTransform.DOScale(new Vector3(baseScale.x * 1.06f, baseScale.y * 1.18f, baseScale.z), 0.12f))
-            .Append(rectTransform.DOScale(baseScale * 1.04f, 0.12f))
-            .Append(rectTransform.DOScale(baseScale, 0.12f));
+        if (isSuctionHolding && suctionShakeTween == null)
+        {
+            StartSuctionShake();
+        }
     }
 
     public void PlayFailAnimation()
@@ -121,16 +132,84 @@ public class AirPurifierController : MonoBehaviour
 
         SetFail();
         isFailAnimating = true;
-        activeSequence?.Kill();
+        StopIdleBreathing();
+        StopSuctionShake();
+        failSequence?.Kill();
         rectTransform.localScale = baseScale;
-        activeSequence = DOTween.Sequence()
+        rectTransform.anchoredPosition = baseAnchoredPosition;
+        failSequence = DOTween.Sequence()
             .Append(rectTransform.DOShakeAnchorPos(0.36f, new Vector2(34f, 0f), 18, 80f))
             .Join(rectTransform.DOScale(new Vector3(baseScale.x * 1.10f, baseScale.y * 0.92f, baseScale.z), 0.12f).SetLoops(2, LoopType.Yoyo))
             .AppendCallback(() =>
             {
                 isFailAnimating = false;
                 rectTransform.localScale = baseScale;
+                rectTransform.anchoredPosition = baseAnchoredPosition;
+                if (isSuctionHolding)
+                {
+                    StartSuctionHold();
+                }
+                else
+                {
+                    SetNormal();
+                }
             });
+    }
+
+    public void StartIdleBreathing()
+    {
+        if (rectTransform == null || isFailAnimating || isSuctionHolding)
+        {
+            return;
+        }
+
+        StopIdleBreathing();
+        rectTransform.localScale = baseScale;
+        idleBreathingTween = rectTransform.DOScale(baseScale * 1.04f, 0.95f)
+            .SetEase(Ease.InOutSine)
+            .SetLoops(-1, LoopType.Yoyo);
+    }
+
+    public void StopIdleBreathing()
+    {
+        idleBreathingTween?.Kill();
+        idleBreathingTween = null;
+        if (rectTransform != null)
+        {
+            rectTransform.localScale = baseScale;
+        }
+    }
+
+    public void StartSuctionShake()
+    {
+        if (rectTransform == null || isFailAnimating)
+        {
+            return;
+        }
+
+        StopSuctionShake();
+        rectTransform.anchoredPosition = baseAnchoredPosition;
+        suctionShakeTween = rectTransform.DOAnchorPosX(baseAnchoredPosition.x + 6f, 0.055f)
+            .SetEase(Ease.InOutSine)
+            .SetLoops(-1, LoopType.Yoyo);
+    }
+
+    public void StopSuctionShake()
+    {
+        suctionShakeTween?.Kill();
+        suctionShakeTween = null;
+        if (rectTransform != null)
+        {
+            rectTransform.anchoredPosition = baseAnchoredPosition;
+        }
+    }
+
+    private void StopAllMotion()
+    {
+        failSequence?.Kill();
+        failSequence = null;
+        StopIdleBreathing();
+        StopSuctionShake();
     }
 
     private void SetSprite(Sprite sprite)

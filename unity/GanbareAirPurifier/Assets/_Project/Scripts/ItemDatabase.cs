@@ -9,7 +9,11 @@ using UnityEditor;
 public class ItemDatabase
 {
     private const string CsvRelativePath = "_Project/Data/CSV/ItemMaster.csv";
-    private static readonly string[] SpriteSearchFolders = { "Assets/_Project/Art/Items" };
+    private static readonly string[] SpriteSearchFolders =
+    {
+        "Assets/_Project/Art/Items",
+        "Assets/_Project/Art/Effects"
+    };
     private static readonly HashSet<string> WarnedMissingSprites = new HashSet<string>();
 
     private readonly Dictionary<PurifierStage, List<ItemData>> itemsByStage = new Dictionary<PurifierStage, List<ItemData>>();
@@ -117,7 +121,7 @@ public class ItemDatabase
         Debug.Log($"[ItemDatabase] ItemMaster.csv loaded: {TotalCount} items. Home={GetCount(PurifierStage.Home)}, Street={GetCount(PurifierStage.Street)}, City={GetCount(PurifierStage.City)}, Space={GetCount(PurifierStage.Space)}");
     }
 
-    private static Sprite LoadSpriteOrNull(string spriteName)
+    public static Sprite LoadSpriteOrNull(string spriteName)
     {
         if (string.IsNullOrWhiteSpace(spriteName))
         {

@@ -8,13 +8,15 @@ public class ItemSpawner : MonoBehaviour
     [SerializeField] private float moveDuration = 6.0f;
     [SerializeField] private float spawnX = 650f;
     [SerializeField] private float despawnX = -650f;
-    [SerializeField] private float topLaneY = 180f;
-    [SerializeField] private float bottomLaneY = -180f;
+    [SerializeField] private float topLaneY = 280f;
+    [SerializeField] private float bottomLaneY = -80f;
     [SerializeField] private float laneRandomYRange = 60f;
+    [SerializeField] private float bombSpawnRate = 0.10f;
 
     private GameManager gameManager;
     private RectTransform itemLayer;
     private ItemController itemTemplate;
+    private ItemData bombData;
     private float topLaneSpawnTimer;
     private float bottomLaneSpawnTimer;
     private float nextNoCandidateLogTime;
@@ -24,6 +26,7 @@ public class ItemSpawner : MonoBehaviour
         gameManager = manager;
         itemLayer = layer;
         itemTemplate = template;
+        bombData = ItemData.CreateBomb(ItemDatabase.LoadSpriteOrNull("Item_Bomb"));
         topLaneSpawnTimer = 0.15f;
         bottomLaneSpawnTimer = 0.55f;
     }
@@ -53,8 +56,9 @@ public class ItemSpawner : MonoBehaviour
 
     private void SpawnItem(float laneY)
     {
-        var pool = gameManager.GetCurrentSpawnPool();
-        if (pool == null || pool.Count == 0)
+        var spawnBomb = Random.value < bombSpawnRate;
+        var pool = spawnBomb ? null : gameManager.GetCurrentSpawnPool();
+        if (!spawnBomb && (pool == null || pool.Count == 0))
         {
             if (Time.realtimeSinceStartup >= nextNoCandidateLogTime)
             {
@@ -64,8 +68,8 @@ public class ItemSpawner : MonoBehaviour
             return;
         }
 
-        var data = ChooseWeightedItem(pool);
-        Debug.Log($"[ItemSpawner] Selected item: {data.Id} / {data.DisplayName} / Lv{data.RequiredLevel} / {data.SpriteName} / {(data.Sprite != null ? "sprite found" : "placeholder used")}");
+        var data = spawnBomb ? bombData : ChooseWeightedItem(pool);
+        Debug.Log($"[ItemSpawner] Selected item: {data.Id} / {data.DisplayName} / {(data.IsBomb ? "Bomb" : "Lv" + data.RequiredLevel)} / {data.SpriteName} / {(data.Sprite != null ? "sprite found" : "placeholder used")}");
         var item = Instantiate(itemTemplate, itemLayer);
         item.gameObject.SetActive(true);
         var duration = Mathf.Max(2.2f, moveDuration - gameManager.CurrentSuctionLevel * 0.18f);

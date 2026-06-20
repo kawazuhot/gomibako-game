@@ -17,6 +17,12 @@ public enum SizeCategory
     Huge
 }
 
+public enum ItemType
+{
+    Normal,
+    Bomb
+}
+
 [Serializable]
 public class ItemData
 {
@@ -32,6 +38,8 @@ public class ItemData
     public Sprite Sprite;
     public float BaseScale;
     public Color Color;
+    public ItemType ItemType;
+    public bool IsBomb => ItemType == ItemType.Bomb;
 
     public ItemData(string id, PurifierStage stage, string displayName, int requiredLevel, SizeCategory sizeCategory, int score, float gaugeGain, int spawnWeight, string spriteName)
     {
@@ -46,6 +54,17 @@ public class ItemData
         SpriteName = spriteName;
         BaseScale = stage == PurifierStage.Home ? GetHomeScale(requiredLevel) : GetScale(sizeCategory);
         Color = GetPlaceholderColor(stage, requiredLevel);
+        ItemType = ItemType.Normal;
+    }
+
+    public static ItemData CreateBomb(Sprite sprite)
+    {
+        var data = new ItemData("special_bomb", PurifierStage.Home, "爆弾", 999, SizeCategory.Medium, 0, 0f, 0, "Item_Bomb");
+        data.Sprite = sprite;
+        data.BaseScale = 2.875f;
+        data.Color = new Color(0.08f, 0.08f, 0.10f);
+        data.ItemType = ItemType.Bomb;
+        return data;
     }
 
     public static float GetScale(SizeCategory category)

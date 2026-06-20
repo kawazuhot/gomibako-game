@@ -14,6 +14,7 @@ public class ItemController : MonoBehaviour
     [SerializeField] private Outline outline;
 
     private Tween moveTween;
+    private Tween breathingTween;
     private Action<ItemController> onMissed;
     private Vector2 normalSize = new Vector2(150f, 92f);
     private Vector2 normalFillSize = new Vector2(136f, 78f);
@@ -46,7 +47,7 @@ public class ItemController : MonoBehaviour
         }
 
         var visualScale = data.BaseScale;
-        if (data.RequiredLevel > currentSuctionLevel)
+        if (!data.IsBomb && data.RequiredLevel > currentSuctionLevel)
         {
             visualScale *= 1.14f;
         }
@@ -63,6 +64,7 @@ public class ItemController : MonoBehaviour
             fillImage.preserveAspect = hasSprite;
             fillImage.color = hasSprite ? Color.white : data.Color;
             fillImage.rectTransform.sizeDelta = normalFillSize * visualScale;
+            fillImage.rectTransform.localRotation = data.IsBomb && !hasSprite ? Quaternion.Euler(0f, 0f, 45f) : Quaternion.identity;
         }
 
         if (borderImage != null)
@@ -77,36 +79,67 @@ public class ItemController : MonoBehaviour
 
         if (labelText != null)
         {
-            labelText.text = $"{data.DisplayName}\nLv{data.RequiredLevel}";
+            labelText.text = data.IsBomb ? "BOMB" : $"{data.DisplayName}\nLv{data.RequiredLevel}";
             labelText.enabled = !hasSprite;
         }
 
-        ConfigureLevelBadge(data.RequiredLevel, visualScale);
+        ConfigureLevelBadge(data, visualScale);
         SetHighlighted(false);
+        StartBreathingMotion(data.IsBomb);
         moveTween?.Kill();
         moveTween = rectTransform.DOAnchorPosX(endX, moveDuration).SetEase(Ease.Linear).OnComplete(() => onMissed?.Invoke(this));
     }
 
-    private void ConfigureLevelBadge(int requiredLevel, float visualScale)
+    private void StartBreathingMotion(bool isBomb)
     {
+        StopBreathingMotion();
+        if (rectTransform == null)
+        {
+            return;
+        }
+
+        var maxScale = UnityEngine.Random.Range(isBomb ? 1.04f : 1.02f, isBomb ? 1.07f : 1.05f);
+        var duration = UnityEngine.Random.Range(0.4f, 0.6f);
+        var delay = UnityEngine.Random.Range(0f, 0.3f);
+        rectTransform.localScale = Vector3.one;
+        breathingTween = rectTransform.DOScale(Vector3.one * maxScale, duration)
+            .SetDelay(delay)
+            .SetEase(Ease.InOutSine)
+            .SetLoops(-1, LoopType.Yoyo);
+    }
+
+    private void StopBreathingMotion()
+    {
+        breathingTween?.Kill();
+        breathingTween = null;
+        if (rectTransform != null)
+        {
+            rectTransform.localScale = Vector3.one;
+        }
+    }
+
+    private void ConfigureLevelBadge(ItemData data, float visualScale)
+    {
+        var requiredLevel = data.RequiredLevel;
         var badgeColor = GetLevelBadgeColor(requiredLevel);
+        var badgeText = data.IsBomb ? "!!" : $"★ Lv{requiredLevel}";
         if (levelBadgeImage != null)
         {
             levelBadgeImage.enabled = true;
-            levelBadgeImage.color = badgeColor;
+            levelBadgeImage.color = data.IsBomb ? new Color(1f, 0.10f, 0.08f, 0.98f) : badgeColor;
             var badgeRect = levelBadgeImage.rectTransform;
-            badgeRect.sizeDelta = GetBadgeSize(requiredLevel);
+            badgeRect.sizeDelta = data.IsBomb ? new Vector2(82f, 58f) : GetBadgeSize(requiredLevel);
             badgeRect.anchoredPosition = new Vector2(normalSize.x * visualScale * 0.38f, normalSize.y * visualScale * 0.36f);
-            badgeRect.localRotation = Quaternion.Euler(0f, 0f, -6f);
+            badgeRect.localRotation = Quaternion.Euler(0f, 0f, data.IsBomb ? 8f : -6f);
             badgeRect.SetAsLastSibling();
         }
 
         if (levelBadgeText != null)
         {
             levelBadgeText.enabled = true;
-            levelBadgeText.text = $"★ Lv{requiredLevel}";
+            levelBadgeText.text = badgeText;
             levelBadgeText.color = Color.white;
-            levelBadgeText.fontSize = 28;
+            levelBadgeText.fontSize = data.IsBomb ? 34 : 28;
             levelBadgeText.fontStyle = FontStyle.Bold;
             levelBadgeText.rectTransform.SetAsLastSibling();
         }
@@ -186,6 +219,7 @@ public class ItemController : MonoBehaviour
     public void MarkResolving()
     {
         IsResolving = true;
+        StopBreathingMotion();
         SetHighlighted(false);
         StopMovement();
     }
@@ -193,6 +227,7 @@ public class ItemController : MonoBehaviour
     public void KillTweens()
     {
         moveTween?.Kill();
+        StopBreathingMotion();
         rectTransform?.DOKill();
     }
 }

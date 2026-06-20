@@ -21,6 +21,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private RectTransform suctionZone;
     [SerializeField] private SuctionZoneVisualController suctionZoneVisual;
     [SerializeField] private Image backgroundImage;
+    [SerializeField] private Image bombExplosionImage;
     [SerializeField] private BackgroundController backgroundController;
     [SerializeField] private FadeController fadeController;
     [SerializeField] private Text timeText;
@@ -38,6 +39,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Sprite airPurifierSuctionSprite;
     [SerializeField] private Sprite airPurifierFailSprite;
     [SerializeField] private Sprite homeStageBackgroundSprite;
+    [SerializeField] private Sprite bombExplosionSprite;
     [SerializeField] private ItemController itemTemplate;
     [SerializeField] private ItemSpawner itemSpawner;
     [SerializeField] private SuctionManager suctionManager;
@@ -57,12 +59,15 @@ public class GameManager : MonoBehaviour
     private bool isSuctionHeld;
     private bool isStageTransitioning;
     private bool isFastForwardEnabled;
+    private bool isBombStunned;
     private bool lastHadTargetInRange;
     private int lastDisplayedSuctionLevel = -1;
     private float suppressPointerSuckUntilRealtime;
 
     public int CurrentSuctionLevel => gaugeManager.SuctionLevel;
     public bool IsFastForwardActive => isFastForwardEnabled;
+    public bool IsTargetControlLocked => isStageTransitioning || IsTimeUp;
+    public bool IsSuctionLocked => isStageTransitioning || isBombStunned || IsTimeUp;
     public bool IsTimeUp => timerManager.IsFinished;
     private float GameplaySpeedMultiplier => isFastForwardEnabled ? FastForwardTimeScale : NormalTimeScale;
 
@@ -168,7 +173,7 @@ public class GameManager : MonoBehaviour
 
     public void TrySuck()
     {
-        if (isStageTransitioning || IsTimeUp)
+        if (IsSuctionLocked)
         {
             return;
         }
@@ -180,13 +185,13 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        resultText.text = candidate.Data.RequiredLevel <= gaugeManager.SuctionLevel ? "吸引!" : "重すぎる!";
+        resultText.text = candidate.Data.IsBomb ? "危険!" : candidate.Data.RequiredLevel <= gaugeManager.SuctionLevel ? "吸引!" : "重すぎる!";
         suctionManager.TrySuck(candidate);
     }
 
     public void BeginSuctionHold()
     {
-        if (isStageTransitioning || IsTimeUp)
+        if (IsSuctionLocked)
         {
             return;
         }
@@ -261,9 +266,85 @@ public class GameManager : MonoBehaviour
         UpdateUi();
     }
 
+    public void ResolveBomb(ItemController item)
+    {
+        activeItems.Remove(item);
+        comboManager.Reset();
+        resultText.text = "BOMB!";
+
+        if (item != null)
+        {
+            item.KillTweens();
+            Destroy(item.gameObject);
+        }
+
+        StartCoroutine(PlayBombPenalty());
+        UpdateUi();
+    }
+
+    public void BeginBombLock()
+    {
+        if (isBombStunned)
+        {
+            return;
+        }
+
+        isBombStunned = true;
+        keyboardFastForward = false;
+        SetFastForward(false);
+        EndSuctionHold();
+        resultText.text = "危険!";
+    }
+
+    public void PlayBombExplosionFeedback(Vector2 explosionPosition)
+    {
+        resultText.text = "BOOM!";
+        airPurifier.PlayFailAnimation();
+        PlayBombExplosionEffect(explosionPosition);
+        var root = canvas != null ? canvas.GetComponent<RectTransform>() : null;
+        if (root == null)
+        {
+            return;
+        }
+
+        root.DOKill();
+        root.anchoredPosition = Vector2.zero;
+        root.DOShakeAnchorPos(0.42f, new Vector2(34f, 28f), 24, 90f)
+            .OnComplete(() => root.anchoredPosition = Vector2.zero);
+    }
+
+    private void PlayBombExplosionEffect(Vector2 explosionPosition)
+    {
+        if (bombExplosionImage == null)
+        {
+            return;
+        }
+
+        var rect = bombExplosionImage.rectTransform;
+        bombExplosionImage.DOKill();
+        rect.DOKill();
+
+        rect.anchoredPosition = explosionPosition;
+        rect.localScale = Vector3.one * 0.6f;
+        bombExplosionImage.color = bombExplosionSprite != null
+            ? Color.white
+            : new Color(1f, 0.42f, 0.08f, 0.92f);
+        bombExplosionImage.gameObject.SetActive(true);
+
+        var sequence = DOTween.Sequence();
+        sequence.Append(rect.DOScale(1.2f, 0.12f).SetEase(Ease.OutBack));
+        sequence.Append(rect.DOScale(1.4f, 0.18f).SetEase(Ease.OutQuad));
+        sequence.Join(bombExplosionImage.DOFade(0f, 0.18f).SetEase(Ease.InQuad));
+        sequence.OnComplete(() =>
+        {
+            bombExplosionImage.gameObject.SetActive(false);
+            rect.localScale = Vector3.one;
+        });
+    }
+
     public void SetFastForward(bool enabled)
     {
-        if (isStageTransitioning && enabled)
+        if ((isStageTransitioning || isBombStunned) && enabled)
         {
             return;
         }
@@ -322,6 +403,8 @@ public class GameManager : MonoBehaviour
         suctionZoneVisual = CreateSuctionZoneVisual(suctionZone, suctionZoneRadius);
 
         targetMarkerController = CreateTargetMarkerInputArea("TargetMarker_InputArea", root, new Vector2(0f, 40f), new Vector2(1080f, 1120f), this, suctionZone);
+        bombExplosionSprite = ItemDatabase.LoadSpriteOrNull("Effect_BombExplosion");
+        bombExplosionImage = CreateBombExplosionImage(root, bombExplosionSprite);
 
         timeText = CreateText("TIME_Text", root, "TIME 90", new Vector2(-390f, 830f), new Vector2(260f, 70f), 42, Color.white, TextAnchor.MiddleLeft);
         scoreText = CreateText("SCORE_Text", root, "SCORE 0", new Vector2(-390f, 760f), new Vector2(320f, 70f), 36, Color.white, TextAnchor.MiddleLeft);
@@ -430,6 +513,16 @@ public class GameManager : MonoBehaviour
 
     private void HandleInput()
     {
+        if (isBombStunned)
+        {
+            if (keyboardFastForward || isFastForwardEnabled)
+            {
+                keyboardFastForward = false;
+                SetFastForward(false);
+            }
+            return;
+        }
+
         if (WasSuckPressed())
         {
             TrySuck();
@@ -445,7 +538,7 @@ public class GameManager : MonoBehaviour
 
     private void HandleHeldSuction()
     {
-        if (isStageTransitioning || !isSuctionHeld || IsTimeUp)
+        if (IsSuctionLocked || !isSuctionHeld)
         {
             return;
         }
@@ -456,7 +549,7 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        resultText.text = candidate.Data.RequiredLevel <= gaugeManager.SuctionLevel ? "吸引!" : "重すぎる!";
+        resultText.text = candidate.Data.IsBomb ? "危険!" : candidate.Data.RequiredLevel <= gaugeManager.SuctionLevel ? "吸引!" : "重すぎる!";
         suctionManager.TrySuck(candidate);
     }
 
@@ -535,6 +628,22 @@ public class GameManager : MonoBehaviour
 
         isStageTransitioning = false;
         resultText.text = $"{stageManager.CurrentStageName}!";
+    }
+
+    private IEnumerator PlayBombPenalty()
+    {
+        isBombStunned = true;
+        keyboardFastForward = false;
+        SetFastForward(false);
+        EndSuctionHold();
+        suctionZoneVisual?.SetFailFlash();
+        resultText.text = "吸引停止 1秒";
+
+        yield return new WaitForSecondsRealtime(1f);
+
+        isBombStunned = false;
+        resultText.text = "復帰!";
+        RestoreAirPurifierState();
     }
 
     private void ClearActiveItems()
@@ -759,6 +868,16 @@ public class GameManager : MonoBehaviour
         var controller = overlay.gameObject.AddComponent<FadeController>();
         controller.Configure(overlay);
         return controller;
+    }
+
+    private static Image CreateBombExplosionImage(RectTransform parent, Sprite sprite)
+    {
+        var image = CreatePanel("BombExplosion_Effect", parent, Vector2.zero, new Vector2(420f, 420f), new Color(1f, 0.42f, 0.08f, 0f), false);
+        image.sprite = sprite;
+        image.preserveAspect = true;
+        image.raycastTarget = false;
+        image.gameObject.SetActive(false);
+        return image;
     }
 
     private static SuctionHoldArea CreateSuctionHoldArea(string name, RectTransform parent, Vector2 anchoredPosition, Vector2 size, GameManager manager)

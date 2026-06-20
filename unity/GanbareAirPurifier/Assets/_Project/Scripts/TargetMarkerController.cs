@@ -19,13 +19,24 @@ public class TargetMarkerController : MonoBehaviour, IPointerDownHandler, IDragH
 
     public void OnPointerDown(PointerEventData eventData)
     {
+        if (gameManager != null && gameManager.IsTargetControlLocked)
+        {
+            return;
+        }
+
         MoveMarker(eventData);
         gameManager?.BeginSuctionHold();
     }
 
     public void OnDrag(PointerEventData eventData)
     {
+        if (gameManager != null && gameManager.IsTargetControlLocked)
+        {
+            return;
+        }
+
         MoveMarker(eventData);
+        gameManager?.BeginSuctionHold();
     }
 
     public void OnPointerUp(PointerEventData eventData)

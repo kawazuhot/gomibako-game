@@ -10,6 +10,8 @@ public class SuctionManager : MonoBehaviour
     [SerializeField] private float successShrinkDuration = 0.14f;
     [SerializeField] private float failApproachDuration = 0.28f;
     [SerializeField] private float failFlyDuration = 0.45f;
+    [SerializeField] private float bombApproachDuration = 0.32f;
+    [SerializeField] private float bombExplosionDuration = 0.28f;
 
     private GameManager gameManager;
     private AirPurifierController airPurifier;
@@ -32,6 +34,13 @@ public class SuctionManager : MonoBehaviour
 
         target.MarkResolving();
         activeSuctionCount++;
+
+        if (target.Data.IsBomb)
+        {
+            gameManager.BeginBombLock();
+            PlayBomb(target, () => CompleteBomb(target));
+            return;
+        }
 
         var success = target.Data.RequiredLevel <= gameManager.CurrentSuctionLevel;
         if (success)
@@ -83,5 +92,30 @@ public class SuctionManager : MonoBehaviour
     {
         activeSuctionCount = Mathf.Max(0, activeSuctionCount - 1);
         gameManager.ResolveSuction(item, success);
+    }
+
+    private void PlayBomb(ItemController item, Action onComplete)
+    {
+        var rect = item.RectTransform;
+        var start = rect.anchoredPosition;
+        rect.localScale = Vector3.one;
+        var explosionPosition = airPurifier.SuctionPoint + new Vector2(0f, 48f);
+
+        var sequence = DOTween.Sequence();
+        sequence.Append(rect.DOAnchorPos(start + new Vector2(0f, popHeight), popDuration).SetEase(Ease.OutQuad));
+        sequence.Append(rect.DOAnchorPos(explosionPosition, bombApproachDuration).SetEase(Ease.InCubic));
+        sequence.AppendCallback(() =>
+        {
+            rect.localScale = Vector3.zero;
+            gameManager.PlayBombExplosionFeedback(explosionPosition);
+        });
+        sequence.AppendInterval(bombExplosionDuration);
+        sequence.OnComplete(() => onComplete?.Invoke());
+    }
+
+    private void CompleteBomb(ItemController item)
+    {
+        activeSuctionCount = Mathf.Max(0, activeSuctionCount - 1);
+        gameManager.ResolveBomb(item);
     }
 }
