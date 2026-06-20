@@ -32,7 +32,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Text stageText;
     [SerializeField] private Text resultText;
     [SerializeField] private Image gaugeFill;
-    [SerializeField] private SuctionHoldArea suctionHoldArea;
+    [SerializeField] private TargetMarkerController targetMarkerController;
     [SerializeField] private Button fastForwardButton;
     [SerializeField] private AirPurifierController airPurifier;
     [SerializeField] private Sprite airPurifierNormalSprite;
@@ -319,6 +319,8 @@ public class GameManager : MonoBehaviour
         suctionZone = CreateRect("SuctionZoneRoot", root, new Vector2(0f, 30f), new Vector2(suctionZoneRadius * 2f, suctionZoneRadius * 2f));
         suctionZoneVisual = CreateSuctionZoneVisual(suctionZone, suctionZoneRadius);
 
+        targetMarkerController = CreateTargetMarkerInputArea("TargetMarker_InputArea", root, new Vector2(0f, 40f), new Vector2(1080f, 1120f), this, suctionZone);
+
         itemLayer = CreateRect("ItemLayer", root, Vector2.zero, new Vector2(1080f, 1920f));
         itemTemplate = CreateItemTemplate(itemLayer);
         itemTemplate.gameObject.SetActive(false);
@@ -328,11 +330,11 @@ public class GameManager : MonoBehaviour
         timeText = CreateText("TIME_Text", root, "TIME 90", new Vector2(-390f, 830f), new Vector2(260f, 70f), 42, Color.white, TextAnchor.MiddleLeft);
         scoreText = CreateText("SCORE_Text", root, "SCORE 0", new Vector2(-390f, 760f), new Vector2(320f, 70f), 36, Color.white, TextAnchor.MiddleLeft);
         comboText = CreateText("COMBO_Text", root, "COMBO 0", new Vector2(360f, 760f), new Vector2(300f, 70f), 36, Color.white, TextAnchor.MiddleRight);
-        var levelPanel = CreatePanel("SuctionLevel_Panel", root, new Vector2(430f, -390f), new Vector2(190f, 390f), Color.white, false);
+        var levelPanel = CreatePanel("SuctionLevel_Panel", root, new Vector2(430f, -390f), new Vector2(190f, 390f), Color.white, true);
         var levelPanelOutline = levelPanel.gameObject.AddComponent<Outline>();
         levelPanelOutline.effectColor = new Color(1f, 1f, 1f, 0.95f);
         levelPanelOutline.effectDistance = new Vector2(8f, -8f);
-        CreatePanel("SuctionLevel_PanelFill", levelPanel.rectTransform, Vector2.zero, new Vector2(172f, 372f), new Color(1f, 0.89f, 0.22f), false);
+        CreatePanel("SuctionLevel_PanelFill", levelPanel.rectTransform, Vector2.zero, new Vector2(172f, 372f), new Color(1f, 0.89f, 0.22f), true);
         levelText = CreateText("SuctionLevel_Label", levelPanel.rectTransform, "吸引Lv", new Vector2(0f, 135f), new Vector2(160f, 60f), 28, new Color(0.12f, 0.18f, 0.28f), TextAnchor.MiddleCenter);
         levelNumberText = CreateText("SuctionLevel_Number", levelPanel.rectTransform, "1", new Vector2(0f, -30f), new Vector2(180f, 260f), 150, new Color(0.10f, 0.16f, 0.28f), TextAnchor.MiddleCenter);
         stageText = CreateText("Stage_Text", root, "家ステージ", new Vector2(0f, 720f), new Vector2(380f, 70f), 40, new Color(0.18f, 0.22f, 0.30f), TextAnchor.MiddleCenter);
@@ -341,8 +343,6 @@ public class GameManager : MonoBehaviour
         var gaugeBack = CreatePanel("Gauge_Back", root, new Vector2(0f, 660f), new Vector2(520f, 34f), Color.white, false);
         gaugeFill = CreatePanel("Gauge_Fill", gaugeBack.rectTransform, new Vector2(-250f, 0f), new Vector2(500f, 22f), new Color(0.15f, 0.76f, 1f), false);
         gaugeFill.rectTransform.pivot = new Vector2(0f, 0.5f);
-
-        suctionHoldArea = CreateSuctionHoldArea("AirPurifier_TapArea", root, new Vector2(0f, -590f), new Vector2(660f, 660f), this);
 
         fastForwardButton = CreateButton("FastForward_Button", root, "早送り\n長押し", new Vector2(-360f, -760f), new Vector2(300f, 130f), new Color(0.26f, 0.62f, 1f));
         var fastButton = fastForwardButton.gameObject.AddComponent<FastForwardButton>();
@@ -771,6 +771,14 @@ public class GameManager : MonoBehaviour
         var holdArea = image.gameObject.AddComponent<SuctionHoldArea>();
         holdArea.Configure(manager);
         return holdArea;
+    }
+
+    private static TargetMarkerController CreateTargetMarkerInputArea(string name, RectTransform parent, Vector2 anchoredPosition, Vector2 size, GameManager manager, RectTransform marker)
+    {
+        var image = CreatePanel(name, parent, anchoredPosition, size, new Color(1f, 1f, 1f, 0.01f), true);
+        var controller = image.gameObject.AddComponent<TargetMarkerController>();
+        controller.Configure(manager, marker, parent);
+        return controller;
     }
 
     private static ItemController CreateItemTemplate(RectTransform parent)
