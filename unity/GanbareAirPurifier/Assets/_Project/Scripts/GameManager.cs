@@ -20,6 +20,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Canvas canvas;
     [SerializeField] private RectTransform itemLayer;
     [SerializeField] private RectTransform suctionZone;
+    [SerializeField] private SuctionZoneVisualController suctionZoneVisual;
     [SerializeField] private Image backgroundImage;
     [SerializeField] private BackgroundController backgroundController;
     [SerializeField] private FadeController fadeController;
@@ -57,6 +58,7 @@ public class GameManager : MonoBehaviour
     private bool isSuctionHeld;
     private bool isStageTransitioning;
     private bool isFastForwardEnabled;
+    private bool lastHadTargetInRange;
     private int lastDisplayedSuctionLevel = -1;
     private float suppressPointerSuckUntilRealtime;
 
@@ -189,6 +191,7 @@ public class GameManager : MonoBehaviour
         }
 
         isSuctionHeld = true;
+        suctionZoneVisual?.SetSucking();
         if (!suctionManager.IsBusy)
         {
             airPurifier.StartSuctionHold();
@@ -200,6 +203,15 @@ public class GameManager : MonoBehaviour
         isSuctionHeld = false;
         if (!suctionManager.IsBusy)
         {
+            if (highlightedItem != null)
+            {
+                suctionZoneVisual?.SetTargetInRange();
+            }
+            else
+            {
+                suctionZoneVisual?.SetIdle();
+            }
+
             airPurifier.StopSuctionHold();
         }
     }
@@ -237,6 +249,7 @@ public class GameManager : MonoBehaviour
         }
         else
         {
+            suctionZoneVisual?.SetFailFlash();
             comboManager.Reset();
             timerManager.ApplyPenalty(PenaltySeconds);
             resultText.text = $"MISS -{PenaltySeconds:0}s";
@@ -303,11 +316,8 @@ public class GameManager : MonoBehaviour
         backgroundController = CreateBackgroundController(root, homeStageBackgroundSprite);
         CreatePanel("Play_Lane", root, new Vector2(0f, 0f), new Vector2(1080f, 520f), new Color(1f, 0.84f, 0.42f, 0.32f), false);
 
-        suctionZone = CreatePanel("吸引ゾーン", root, new Vector2(0f, 30f), new Vector2(suctionZoneRadius * 2f, suctionZoneRadius * 2f), new Color(0.42f, 0.82f, 1f, 0.22f), false).rectTransform;
-        var zoneOutline = suctionZone.gameObject.AddComponent<Outline>();
-        zoneOutline.effectColor = new Color(0.05f, 0.55f, 1f, 0.8f);
-        zoneOutline.effectDistance = new Vector2(8f, -8f);
-        CreateText("Zone_Label", suctionZone, "吸引ゾーン", new Vector2(0f, 0f), new Vector2(240f, 80f), 36, Color.white, TextAnchor.MiddleCenter);
+        suctionZone = CreateRect("SuctionZoneRoot", root, new Vector2(0f, 30f), new Vector2(suctionZoneRadius * 2f, suctionZoneRadius * 2f));
+        suctionZoneVisual = CreateSuctionZoneVisual(suctionZone, suctionZoneRadius);
 
         itemLayer = CreateRect("ItemLayer", root, Vector2.zero, new Vector2(1080f, 1920f));
         itemTemplate = CreateItemTemplate(itemLayer);
@@ -371,6 +381,24 @@ public class GameManager : MonoBehaviour
         {
             highlightedItem.SetHighlighted(true);
         }
+
+        var hasTarget = highlightedItem != null;
+        if (hasTarget == lastHadTargetInRange || suctionZoneVisual == null || isSuctionHeld || suctionManager.IsBusy)
+        {
+            lastHadTargetInRange = hasTarget;
+            return;
+        }
+
+        if (hasTarget)
+        {
+            suctionZoneVisual.SetTargetInRange();
+        }
+        else
+        {
+            suctionZoneVisual.SetIdle();
+        }
+
+        lastHadTargetInRange = hasTarget;
     }
 
     private ItemController GetBestCandidate()
@@ -445,10 +473,20 @@ public class GameManager : MonoBehaviour
 
         if (isSuctionHeld && !IsTimeUp)
         {
+            suctionZoneVisual?.SetSucking();
             airPurifier.StartSuctionHold();
         }
         else
         {
+            if (highlightedItem != null)
+            {
+                suctionZoneVisual?.SetTargetInRange();
+            }
+            else
+            {
+                suctionZoneVisual?.SetIdle();
+            }
+
             airPurifier.SetNormal();
         }
     }
@@ -518,6 +556,8 @@ public class GameManager : MonoBehaviour
 
         activeItems.Clear();
         highlightedItem = null;
+        lastHadTargetInRange = false;
+        suctionZoneVisual?.SetIdle();
     }
 
     private bool WasSuckPressed()
@@ -665,6 +705,42 @@ public class GameManager : MonoBehaviour
         var button = image.gameObject.AddComponent<Button>();
         button.targetGraphic = inner;
         return button;
+    }
+
+    private static SuctionZoneVisualController CreateSuctionZoneVisual(RectTransform parent, float radius)
+    {
+        var images = new List<Image>();
+
+        images.AddRange(CreateRingLikeBox("Crosshair_RingOuter", parent, Vector2.zero, new Vector2(radius * 1.55f, radius * 1.55f), 16f));
+        images.AddRange(CreateRingLikeBox("Crosshair_RingInner", parent, Vector2.zero, new Vector2(radius * 0.58f, radius * 0.58f), 12f));
+
+        images.Add(CreateCrosshairLine("Crosshair_Top", parent, new Vector2(0f, radius * 0.62f), new Vector2(18f, 70f)));
+        images.Add(CreateCrosshairLine("Crosshair_Bottom", parent, new Vector2(0f, -radius * 0.62f), new Vector2(18f, 70f)));
+        images.Add(CreateCrosshairLine("Crosshair_Left", parent, new Vector2(-radius * 0.62f, 0f), new Vector2(70f, 18f)));
+        images.Add(CreateCrosshairLine("Crosshair_Right", parent, new Vector2(radius * 0.62f, 0f), new Vector2(70f, 18f)));
+        images.Add(CreateCrosshairLine("Crosshair_CenterDot", parent, Vector2.zero, new Vector2(28f, 28f)));
+
+        CreateText("Crosshair_Label", parent, "吸引", new Vector2(0f, -radius * 0.92f), new Vector2(160f, 46f), 24, new Color(1f, 0.22f, 0.18f, 0.82f), TextAnchor.MiddleCenter);
+
+        var controller = parent.gameObject.AddComponent<SuctionZoneVisualController>();
+        controller.Configure(parent, images.ToArray());
+        return controller;
+    }
+
+    private static List<Image> CreateRingLikeBox(string name, RectTransform parent, Vector2 center, Vector2 size, float thickness)
+    {
+        return new List<Image>
+        {
+            CreateCrosshairLine(name + "_Top", parent, center + new Vector2(0f, size.y * 0.5f), new Vector2(size.x, thickness)),
+            CreateCrosshairLine(name + "_Bottom", parent, center + new Vector2(0f, -size.y * 0.5f), new Vector2(size.x, thickness)),
+            CreateCrosshairLine(name + "_Left", parent, center + new Vector2(-size.x * 0.5f, 0f), new Vector2(thickness, size.y)),
+            CreateCrosshairLine(name + "_Right", parent, center + new Vector2(size.x * 0.5f, 0f), new Vector2(thickness, size.y))
+        };
+    }
+
+    private static Image CreateCrosshairLine(string name, RectTransform parent, Vector2 anchoredPosition, Vector2 size)
+    {
+        return CreatePanel(name, parent, anchoredPosition, size, new Color(1f, 0.16f, 0.16f, 0.72f), false);
     }
 
     private static BackgroundController CreateBackgroundController(RectTransform parent, Sprite homeSprite)
