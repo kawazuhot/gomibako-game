@@ -4,7 +4,7 @@ using UnityEngine;
 public class ItemSpawner : MonoBehaviour
 {
     [SerializeField] private Vector2 normalSpawnIntervalRange = new Vector2(1.1f, 1.7f);
-    [SerializeField] private Vector2 fastSpawnIntervalRange = new Vector2(0.7f, 1.1f);
+    [SerializeField] private float fastForwardSpawnMultiplier = 1.55f;
     [SerializeField] private float moveDuration = 6.0f;
     [SerializeField] private float spawnX = 650f;
     [SerializeField] private float despawnX = -650f;
@@ -12,6 +12,7 @@ public class ItemSpawner : MonoBehaviour
     [SerializeField] private float bottomLaneY = -80f;
     [SerializeField] private float laneRandomYRange = 60f;
     [SerializeField] private float bombSpawnRate = 0.10f;
+    [SerializeField] private float minAllowedSpawnInterval = 0.35f;
 
     private GameManager gameManager;
     private RectTransform itemLayer;
@@ -79,8 +80,11 @@ public class ItemSpawner : MonoBehaviour
 
     private float GetNextSpawnInterval()
     {
-        var range = gameManager.IsFastForwardActive ? fastSpawnIntervalRange : normalSpawnIntervalRange;
-        return Random.Range(range.x, range.y);
+        var range = normalSpawnIntervalRange;
+        var stageMultiplier = GameManager.GetStageSpeedMultiplier(gameManager.CurrentStage);
+        var fastMultiplier = gameManager.IsFastForwardActive ? fastForwardSpawnMultiplier : 1f;
+        var interval = Random.Range(range.x, range.y) / stageMultiplier / fastMultiplier;
+        return Mathf.Max(minAllowedSpawnInterval, interval);
     }
 
     private float GetRandomLaneY(float centerY)

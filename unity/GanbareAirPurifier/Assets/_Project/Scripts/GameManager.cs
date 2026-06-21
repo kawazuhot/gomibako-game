@@ -68,6 +68,7 @@ public class GameManager : MonoBehaviour
     private float suppressPointerSuckUntilRealtime;
 
     public int CurrentSuctionLevel => gaugeManager.SuctionLevel;
+    public PurifierStage CurrentStage => stageManager.CurrentStage;
     public bool IsFastForwardActive => isFastForwardEnabled;
     public bool IsTargetControlLocked => isStageTransitioning || IsTimeUp;
     public bool IsSuctionLocked => isStageTransitioning || isBombStunned || IsTimeUp;
@@ -268,7 +269,7 @@ public class GameManager : MonoBehaviour
 
         var combo = comboManager.AddCombo();
         var gainedScore = scoreManager.AddSuccessScore(item.Data.Score, combo);
-        ShowScorePopup(gainedScore, item.RectTransform.anchoredPosition);
+        ShowScorePopup(gainedScore, combo, ScoreManager.GetComboMultiplier(combo), item.RectTransform.anchoredPosition);
         var previousLevel = gaugeManager.SuctionLevel;
         var previousStage = stageManager.CurrentStage;
         var leveledUp = gaugeManager.AddGauge(item.Data.GaugeGain);
@@ -296,37 +297,20 @@ public class GameManager : MonoBehaviour
         UpdateUi();
     }
 
-    private void ShowScorePopup(int score, Vector2 anchoredPosition)
+    private void ShowScorePopup(int score, int combo, float comboMultiplier, Vector2 anchoredPosition)
     {
         if (scorePopupLayer == null)
         {
             return;
         }
 
-        var popupRect = CreateRect("ScorePopup", scorePopupLayer, anchoredPosition, new Vector2(220f, 86f));
-        var popupText = popupRect.gameObject.AddComponent<Text>();
-        popupText.font = GetBuiltinFont();
-        popupText.text = $"+{score}";
-        popupText.fontSize = 46;
-        popupText.fontStyle = FontStyle.Bold;
-        popupText.alignment = TextAnchor.MiddleCenter;
-        popupText.color = new Color(1f, 0.92f, 0.18f);
-        popupText.raycastTarget = false;
-
-        var outline = popupRect.gameObject.AddComponent<Outline>();
-        outline.effectColor = new Color(0.10f, 0.22f, 0.52f, 0.95f);
-        outline.effectDistance = new Vector2(4f, -4f);
-
-        var shadow = popupRect.gameObject.AddComponent<Shadow>();
-        shadow.effectColor = new Color(0f, 0f, 0f, 0.32f);
-        shadow.effectDistance = new Vector2(5f, -5f);
-
+        var popupRect = CreateRect("ScorePopup", scorePopupLayer, anchoredPosition, new Vector2(320f, 128f));
         var canvasGroup = popupRect.gameObject.AddComponent<CanvasGroup>();
         canvasGroup.blocksRaycasts = false;
         canvasGroup.interactable = false;
 
         var popup = popupRect.gameObject.AddComponent<FloatingScoreText>();
-        popup.Play(score, anchoredPosition);
+        popup.Play(score, combo, comboMultiplier, anchoredPosition, GetBuiltinFont());
     }
 
     public void ResolveBomb(ItemController item)

@@ -16,7 +16,7 @@ public class ScoreManager
         return gained;
     }
 
-    private static float GetComboMultiplier(int combo)
+    public static float GetComboMultiplier(int combo)
     {
         if (combo >= 100)
         {
