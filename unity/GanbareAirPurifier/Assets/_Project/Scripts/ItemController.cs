@@ -21,6 +21,7 @@ public class ItemController : MonoBehaviour
 
     public ItemData Data { get; private set; }
     public bool IsResolving { get; private set; }
+    public bool HasRewardApplied { get; private set; }
     public bool IsAvailable => !IsResolving && gameObject.activeInHierarchy;
     public RectTransform RectTransform => rectTransform;
 
@@ -39,6 +40,7 @@ public class ItemController : MonoBehaviour
     {
         Data = data;
         IsResolving = false;
+        HasRewardApplied = false;
         onMissed = missedCallback;
 
         if (rectTransform == null)
@@ -213,6 +215,17 @@ public class ItemController : MonoBehaviour
         ApplySuctionSprite();
         SetHighlighted(false);
         StopMovement();
+    }
+
+    public bool TryMarkRewardApplied()
+    {
+        if (HasRewardApplied)
+        {
+            return false;
+        }
+
+        HasRewardApplied = true;
+        return true;
     }
 
     private void ApplySuctionSprite()

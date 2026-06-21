@@ -45,6 +45,7 @@ public class SuctionManager : MonoBehaviour
         var success = target.Data.RequiredLevel <= gameManager.CurrentSuctionLevel;
         if (success)
         {
+            gameManager.ApplySuccessReward(target);
             PlaySuccess(target, () => Complete(target, true));
         }
         else

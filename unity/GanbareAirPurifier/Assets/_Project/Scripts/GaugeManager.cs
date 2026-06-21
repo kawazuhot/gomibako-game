@@ -6,20 +6,20 @@ public class GaugeManager
     private static readonly float[] RequiredGaugeByLevel =
     {
         0f,
-        100f,
-        300f,
-        500f,
-        800f,
-        1200f,
-        1700f,
-        2300f,
+        1000f,
+        2000f,
+        4000f,
         3000f,
-        3800f,
-        4800f,
-        6000f,
-        7500f,
-        9500f,
-        12000f
+        5000f,
+        8000f,
+        8000f,
+        8000f,
+        8000f,
+        8000f,
+        8000f,
+        8000f,
+        8000f,
+        8000f
     };
 
     public float Gauge { get; private set; }

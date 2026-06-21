@@ -18,6 +18,7 @@ public class GameManager : MonoBehaviour
     [Header("Runtime References")]
     [SerializeField] private Canvas canvas;
     [SerializeField] private RectTransform itemLayer;
+    [SerializeField] private RectTransform scorePopupLayer;
     [SerializeField] private RectTransform suctionZone;
     [SerializeField] private SuctionZoneVisualController suctionZoneVisual;
     [SerializeField] private Image backgroundImage;
@@ -240,35 +241,7 @@ public class GameManager : MonoBehaviour
     {
         activeItems.Remove(item);
 
-        if (success)
-        {
-            var combo = comboManager.AddCombo();
-            scoreManager.AddSuccessScore(item.Data.Score, combo);
-            var previousLevel = gaugeManager.SuctionLevel;
-            var previousStage = stageManager.CurrentStage;
-            var leveledUp = gaugeManager.AddGauge(item.Data.GaugeGain);
-            if (leveledUp)
-            {
-                var nextStage = StageManager.GetStageForLevel(gaugeManager.SuctionLevel);
-                var stageChanged = previousStage != nextStage;
-                if (stageChanged)
-                {
-                    resultText.text = "ステージアップ!";
-                    StartCoroutine(PlayStageTransition(previousStage, nextStage, previousLevel, gaugeManager.SuctionLevel));
-                }
-                else
-                {
-                    stageManager.ApplyLevel(gaugeManager.SuctionLevel);
-                    ApplyStageVisuals(false);
-                    resultText.text = "Lv UP!";
-                }
-            }
-            else
-            {
-                resultText.text = "SUCCESS";
-            }
-        }
-        else
+        if (!success)
         {
             suctionZoneVisual?.SetFailFlash();
             comboManager.Reset();
@@ -284,6 +257,76 @@ public class GameManager : MonoBehaviour
 
         RestoreAirPurifierState();
         UpdateUi();
+    }
+
+    public void ApplySuccessReward(ItemController item)
+    {
+        if (item == null || item.Data == null || item.Data.IsBomb || !item.TryMarkRewardApplied())
+        {
+            return;
+        }
+
+        var combo = comboManager.AddCombo();
+        var gainedScore = scoreManager.AddSuccessScore(item.Data.Score, combo);
+        ShowScorePopup(gainedScore, item.RectTransform.anchoredPosition);
+        var previousLevel = gaugeManager.SuctionLevel;
+        var previousStage = stageManager.CurrentStage;
+        var leveledUp = gaugeManager.AddGauge(item.Data.GaugeGain);
+        if (leveledUp)
+        {
+            var nextStage = StageManager.GetStageForLevel(gaugeManager.SuctionLevel);
+            var stageChanged = previousStage != nextStage;
+            if (stageChanged)
+            {
+                resultText.text = "ステージアップ!";
+                StartCoroutine(PlayStageTransition(previousStage, nextStage, previousLevel, gaugeManager.SuctionLevel));
+            }
+            else
+            {
+                stageManager.ApplyLevel(gaugeManager.SuctionLevel);
+                ApplyStageVisuals(false);
+                resultText.text = "Lv UP!";
+            }
+        }
+        else
+        {
+            resultText.text = "SUCCESS";
+        }
+
+        UpdateUi();
+    }
+
+    private void ShowScorePopup(int score, Vector2 anchoredPosition)
+    {
+        if (scorePopupLayer == null)
+        {
+            return;
+        }
+
+        var popupRect = CreateRect("ScorePopup", scorePopupLayer, anchoredPosition, new Vector2(220f, 86f));
+        var popupText = popupRect.gameObject.AddComponent<Text>();
+        popupText.font = GetBuiltinFont();
+        popupText.text = $"+{score}";
+        popupText.fontSize = 46;
+        popupText.fontStyle = FontStyle.Bold;
+        popupText.alignment = TextAnchor.MiddleCenter;
+        popupText.color = new Color(1f, 0.92f, 0.18f);
+        popupText.raycastTarget = false;
+
+        var outline = popupRect.gameObject.AddComponent<Outline>();
+        outline.effectColor = new Color(0.10f, 0.22f, 0.52f, 0.95f);
+        outline.effectDistance = new Vector2(4f, -4f);
+
+        var shadow = popupRect.gameObject.AddComponent<Shadow>();
+        shadow.effectColor = new Color(0f, 0f, 0f, 0.32f);
+        shadow.effectDistance = new Vector2(5f, -5f);
+
+        var canvasGroup = popupRect.gameObject.AddComponent<CanvasGroup>();
+        canvasGroup.blocksRaycasts = false;
+        canvasGroup.interactable = false;
+
+        var popup = popupRect.gameObject.AddComponent<FloatingScoreText>();
+        popup.Play(score, anchoredPosition);
     }
 
     public void ResolveBomb(ItemController item)
@@ -425,6 +468,7 @@ public class GameManager : MonoBehaviour
         targetMarkerController = CreateTargetMarkerInputArea("TargetMarker_InputArea", root, new Vector2(0f, 40f), new Vector2(1080f, 1120f), this, suctionZone);
         bombExplosionSprite = ItemDatabase.LoadSpriteOrNull("Effect_BombExplosion");
         bombExplosionImage = CreateBombExplosionImage(root, bombExplosionSprite);
+        scorePopupLayer = CreateRect("ScorePopupLayer", root, Vector2.zero, new Vector2(1080f, 1920f));
 
         timeText = CreateText("TIME_Text", root, "TIME 90", new Vector2(-390f, 830f), new Vector2(260f, 70f), 42, Color.white, TextAnchor.MiddleLeft);
         scoreText = CreateText("SCORE_Text", root, "SCORE 0", new Vector2(-390f, 760f), new Vector2(320f, 70f), 36, Color.white, TextAnchor.MiddleLeft);
@@ -444,7 +488,7 @@ public class GameManager : MonoBehaviour
         gaugeFill = CreatePanel("Gauge_Fill", gaugeBack.rectTransform, new Vector2(0f, -176f), new Vector2(42f, 0f), new Color(0.15f, 0.76f, 1f), false);
         gaugeFill.rectTransform.pivot = new Vector2(0.5f, 0f);
 
-        fastForwardButton = CreateButton("FastForward_Button", root, "早送り\n長押し", new Vector2(360f, -760f), new Vector2(300f, 130f), new Color(0.26f, 0.62f, 1f));
+        fastForwardButton = CreateButton("FastForward_Button", root, "早送り\n長押し", new Vector2(360f, -610f), new Vector2(300f, 130f), new Color(0.26f, 0.62f, 1f));
         var fastButton = fastForwardButton.gameObject.AddComponent<FastForwardButton>();
         fastButton.Configure(this);
 
