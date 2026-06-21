@@ -119,7 +119,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &871536086
+--- !u!1 &12016975
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -127,8 +127,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 871536088}
-  - component: {fileID: 871536087}
+  - component: {fileID: 12016977}
+  - component: {fileID: 12016976}
   m_Layer: 0
   m_Name: MVP_GameManager
   m_TagString: Untagged
@@ -136,13 +136,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &871536087
+--- !u!114 &12016976
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 871536086}
+  m_GameObject: {fileID: 12016975}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0d9ee144b57a04749bd8bb4c9f42c95b, type: 3}
@@ -171,18 +171,19 @@ MonoBehaviour:
   airPurifierSuctionSprite: {fileID: 21300000, guid: 7cc00a31bf3d741359b9092adec2420c, type: 3}
   airPurifierFailSprite: {fileID: 21300000, guid: f82505d7f27564be1bc7ea7eee4723c7, type: 3}
   homeStageBackgroundSprite: {fileID: 21300000, guid: 858d26577d9b34b6689a7b49d8cce0d4, type: 3}
+  streetStageBackgroundSprite: {fileID: 21300000, guid: 6d4aded12e1114ebdb87e737ac6c46ad, type: 3}
   bombExplosionSprite: {fileID: 0}
   itemTemplate: {fileID: 0}
   itemSpawner: {fileID: 0}
   suctionManager: {fileID: 0}
   suctionZoneRadius: 150
---- !u!4 &871536088
+--- !u!4 &12016977
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 871536086}
+  m_GameObject: {fileID: 12016975}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -191,7 +192,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1557411139
+--- !u!1 &1112020226
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -199,9 +200,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1557411142}
-  - component: {fileID: 1557411141}
-  - component: {fileID: 1557411140}
+  - component: {fileID: 1112020229}
+  - component: {fileID: 1112020228}
+  - component: {fileID: 1112020227}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -209,21 +210,21 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!81 &1557411140
+--- !u!81 &1112020227
 AudioListener:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1557411139}
+  m_GameObject: {fileID: 1112020226}
   m_Enabled: 1
---- !u!20 &1557411141
+--- !u!20 &1112020228
 Camera:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1557411139}
+  m_GameObject: {fileID: 1112020226}
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 1
@@ -268,13 +269,13 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!4 &1557411142
+--- !u!4 &1112020229
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1557411139}
+  m_GameObject: {fileID: 1112020226}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: -10}
@@ -287,5 +288,5 @@ Transform:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 1557411142}
-  - {fileID: 871536088}
+  - {fileID: 1112020229}
+  - {fileID: 12016977}

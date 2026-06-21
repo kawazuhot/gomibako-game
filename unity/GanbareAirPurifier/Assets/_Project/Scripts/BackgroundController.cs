@@ -9,14 +9,18 @@ public class BackgroundController : MonoBehaviour
     [SerializeField] private Image streetBackground;
     [SerializeField] private float homeInitialScale = 1.2f;
     [SerializeField] private float homeStageUpScale = 1.0f;
+    [SerializeField] private float streetInitialScale = 1.2f;
+    [SerializeField] private float streetStageProgressScale = 1.0f;
     [SerializeField] private float stageUpDuration = 0.6f;
 
     private Tween activeTween;
 
     public float HomeInitialScale => homeInitialScale;
     public float HomeStageUpScale => homeStageUpScale;
+    public float StreetInitialScale => streetInitialScale;
+    public float StreetStageProgressScale => streetStageProgressScale;
 
-    public void Configure(Image home, Image street, Sprite homeSprite)
+    public void Configure(Image home, Image street, Sprite homeSprite, Sprite streetSprite)
     {
         homeBackground = home;
         streetBackground = street;
@@ -30,8 +34,9 @@ public class BackgroundController : MonoBehaviour
 
         if (streetBackground != null)
         {
+            streetBackground.sprite = streetSprite;
             streetBackground.preserveAspect = true;
-            streetBackground.color = new Color(0.70f, 0.88f, 1f);
+            streetBackground.color = streetSprite != null ? Color.white : new Color(0.70f, 0.88f, 1f);
         }
 
         SetHomeBackground();
@@ -50,7 +55,7 @@ public class BackgroundController : MonoBehaviour
         if (streetBackground != null)
         {
             streetBackground.gameObject.SetActive(false);
-            streetBackground.rectTransform.localScale = Vector3.one;
+            streetBackground.rectTransform.localScale = Vector3.one * streetInitialScale;
         }
     }
 
@@ -66,7 +71,7 @@ public class BackgroundController : MonoBehaviour
         if (streetBackground != null)
         {
             streetBackground.gameObject.SetActive(true);
-            streetBackground.rectTransform.localScale = Vector3.one;
+            streetBackground.rectTransform.localScale = Vector3.one * streetInitialScale;
         }
     }
 
@@ -93,5 +98,21 @@ public class BackgroundController : MonoBehaviour
             SetStreetBackground();
             onComplete?.Invoke();
         });
+    }
+
+    public void PlayStreetStageZoomOut(Action onComplete = null)
+    {
+        if (streetBackground == null)
+        {
+            onComplete?.Invoke();
+            return;
+        }
+
+        streetBackground.gameObject.SetActive(true);
+        activeTween?.Kill();
+        activeTween = streetBackground.rectTransform
+            .DOScale(Vector3.one * streetStageProgressScale, stageUpDuration)
+            .SetEase(Ease.OutCubic)
+            .OnComplete(() => onComplete?.Invoke());
     }
 }

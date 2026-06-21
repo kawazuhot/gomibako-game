@@ -36,6 +36,7 @@ public class ItemData
     public int SpawnWeight;
     public string SpriteName;
     public Sprite Sprite;
+    public Sprite SuctionSprite;
     public float BaseScale;
     public Color Color;
     public ItemType ItemType;
@@ -52,7 +53,7 @@ public class ItemData
         GaugeGain = gaugeGain;
         SpawnWeight = Mathf.Max(0, spawnWeight);
         SpriteName = spriteName;
-        BaseScale = stage == PurifierStage.Home ? GetHomeScale(requiredLevel) : GetScale(sizeCategory);
+        BaseScale = (stage == PurifierStage.Home ? GetHomeScale(requiredLevel) : GetScale(sizeCategory)) * GetStageScaleMultiplier(stage) * GetItemScaleMultiplier(id);
         Color = GetPlaceholderColor(stage, requiredLevel);
         ItemType = ItemType.Normal;
     }
@@ -96,6 +97,24 @@ public class ItemData
                 return 3.00f;
             default:
                 return GetScale(SizeCategory.Huge);
+        }
+    }
+
+    private static float GetStageScaleMultiplier(PurifierStage stage)
+    {
+        return stage == PurifierStage.Street ? 2.5f : 1.0f;
+    }
+
+    private static float GetItemScaleMultiplier(string id)
+    {
+        switch (id)
+        {
+            case "street_high_school_girl":
+            case "street_college_student":
+            case "street_drunk_man":
+                return 1.5f;
+            default:
+                return 1.0f;
         }
     }
 

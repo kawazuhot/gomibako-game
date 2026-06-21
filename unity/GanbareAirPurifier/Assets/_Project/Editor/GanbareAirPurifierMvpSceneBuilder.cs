@@ -11,6 +11,7 @@ public static class GanbareAirPurifierMvpSceneBuilder
     private const string AirPurifierSuctionPath = "Assets/_Project/Art/AirPurifier/AirPurifier_Suction.png";
     private const string AirPurifierFailPath = "Assets/_Project/Art/AirPurifier/AirPurifier_Fail.png";
     private const string HomeStageBackgroundPath = "Assets/_Project/Art/Backgrounds/HomeStage_Background.png";
+    private const string StreetStageBackgroundPath = "Assets/_Project/Art/Backgrounds/StreetStage_Background.png";
 
     [MenuItem("GanbareAirPurifier/Rebuild MVP Scene")]
     public static void RebuildMvpScene()
@@ -25,7 +26,9 @@ public static class GanbareAirPurifierMvpSceneBuilder
             AssetDatabase.LoadAssetAtPath<Sprite>(AirPurifierNormalPath),
             AssetDatabase.LoadAssetAtPath<Sprite>(AirPurifierSuctionPath),
             AssetDatabase.LoadAssetAtPath<Sprite>(AirPurifierFailPath));
-        gameManager.ConfigureBackgroundSprites(AssetDatabase.LoadAssetAtPath<Sprite>(HomeStageBackgroundPath));
+        gameManager.ConfigureBackgroundSprites(
+            AssetDatabase.LoadAssetAtPath<Sprite>(HomeStageBackgroundPath),
+            AssetDatabase.LoadAssetAtPath<Sprite>(StreetStageBackgroundPath));
 
         EditorSceneManager.SaveScene(scene, ScenePath);
         EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
@@ -48,6 +51,7 @@ public static class GanbareAirPurifierMvpSceneBuilder
         ConfigureSpriteImport(AirPurifierSuctionPath);
         ConfigureSpriteImport(AirPurifierFailPath);
         ConfigureSpriteImport(HomeStageBackgroundPath);
+        ConfigureSpriteImport(StreetStageBackgroundPath);
     }
 
     private static void ConfigureSpriteImport(string path)

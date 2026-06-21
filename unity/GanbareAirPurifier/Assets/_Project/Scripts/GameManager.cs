@@ -39,6 +39,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Sprite airPurifierSuctionSprite;
     [SerializeField] private Sprite airPurifierFailSprite;
     [SerializeField] private Sprite homeStageBackgroundSprite;
+    [SerializeField] private Sprite streetStageBackgroundSprite;
     [SerializeField] private Sprite bombExplosionSprite;
     [SerializeField] private ItemController itemTemplate;
     [SerializeField] private ItemSpawner itemSpawner;
@@ -69,7 +70,7 @@ public class GameManager : MonoBehaviour
     public bool IsTargetControlLocked => isStageTransitioning || IsTimeUp;
     public bool IsSuctionLocked => isStageTransitioning || isBombStunned || IsTimeUp;
     public bool IsTimeUp => timerManager.IsFinished;
-    private float GameplaySpeedMultiplier => isFastForwardEnabled ? FastForwardTimeScale : NormalTimeScale;
+    private float GameplaySpeedMultiplier => GetStageSpeedMultiplier(stageManager.CurrentStage) * (isFastForwardEnabled ? FastForwardTimeScale : NormalTimeScale);
 
     public void ConfigureAirPurifierSprites(Sprite normal, Sprite suction, Sprite fail)
     {
@@ -78,9 +79,10 @@ public class GameManager : MonoBehaviour
         airPurifierFailSprite = fail;
     }
 
-    public void ConfigureBackgroundSprites(Sprite homeBackground)
+    public void ConfigureBackgroundSprites(Sprite homeBackground, Sprite streetBackground)
     {
         homeStageBackgroundSprite = homeBackground;
+        streetStageBackgroundSprite = streetBackground;
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -161,6 +163,22 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    public static float GetStageSpeedMultiplier(PurifierStage stage)
+    {
+        switch (stage)
+        {
+            case PurifierStage.Street:
+                return 1.2f;
+            case PurifierStage.City:
+                return 1.4f;
+            case PurifierStage.Space:
+                return 1.6f;
+            case PurifierStage.Home:
+            default:
+                return 1.0f;
+        }
+    }
+
     public void HandleItemMissed(ItemController item)
     {
         activeItems.Remove(item);
@@ -225,6 +243,7 @@ public class GameManager : MonoBehaviour
         {
             var combo = comboManager.AddCombo();
             scoreManager.AddSuccessScore(item.Data.Score, combo);
+            var previousLevel = gaugeManager.SuctionLevel;
             var previousStage = stageManager.CurrentStage;
             var leveledUp = gaugeManager.AddGauge(item.Data.GaugeGain);
             if (leveledUp)
@@ -234,7 +253,7 @@ public class GameManager : MonoBehaviour
                 if (stageChanged)
                 {
                     resultText.text = "ステージアップ!";
-                    StartCoroutine(PlayStageTransition());
+                    StartCoroutine(PlayStageTransition(previousStage, nextStage, previousLevel, gaugeManager.SuctionLevel));
                 }
                 else
                 {
@@ -390,7 +409,7 @@ public class GameManager : MonoBehaviour
         scaler.matchWidthOrHeight = 0.5f;
 
         var root = canvasObject.GetComponent<RectTransform>();
-        backgroundController = CreateBackgroundController(root, homeStageBackgroundSprite);
+        backgroundController = CreateBackgroundController(root, homeStageBackgroundSprite, streetStageBackgroundSprite);
         CreatePanel("Play_Lane", root, new Vector2(0f, 0f), new Vector2(1080f, 520f), new Color(1f, 0.84f, 0.42f, 0.32f), false);
 
         itemLayer = CreateRect("ItemLayer", root, Vector2.zero, new Vector2(1080f, 1920f));
@@ -595,7 +614,7 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    private IEnumerator PlayStageTransition()
+    private IEnumerator PlayStageTransition(PurifierStage previousStage, PurifierStage nextStage, int previousLevel, int nextLevel)
     {
         isStageTransitioning = true;
         keyboardFastForward = false;
@@ -604,7 +623,19 @@ public class GameManager : MonoBehaviour
         resultText.text = "ステージアップ!";
 
         var zoomDone = false;
-        backgroundController.PlayHomeStageZoomOut(() => zoomDone = true);
+        if (previousStage == PurifierStage.Home && nextStage == PurifierStage.Street)
+        {
+            backgroundController.PlayHomeStageZoomOut(() => zoomDone = true);
+        }
+        else if (previousStage == PurifierStage.Street && nextStage == PurifierStage.City && previousLevel == 6 && nextLevel == 7)
+        {
+            backgroundController.PlayStreetStageZoomOut(() => zoomDone = true);
+        }
+        else
+        {
+            zoomDone = true;
+        }
+
         while (!zoomDone)
         {
             yield return null;
@@ -617,7 +648,11 @@ public class GameManager : MonoBehaviour
 
         ClearActiveItems();
         stageManager.ApplyLevel(gaugeManager.SuctionLevel);
-        backgroundController.SetStreetBackground();
+        ApplyFastForwardToActiveItems();
+        if (nextStage == PurifierStage.Street)
+        {
+            backgroundController.SetStreetBackground();
+        }
         resultText.text = $"{stageManager.CurrentStageName}!";
         UpdateUi();
 
@@ -848,7 +883,7 @@ public class GameManager : MonoBehaviour
         return CreatePanel(name, parent, anchoredPosition, size, new Color(1f, 0.16f, 0.16f, 0.72f), false);
     }
 
-    private static BackgroundController CreateBackgroundController(RectTransform parent, Sprite homeSprite)
+    private static BackgroundController CreateBackgroundController(RectTransform parent, Sprite homeSprite, Sprite streetSprite)
     {
         var root = CreateRect("BackgroundRoot", parent, Vector2.zero, new Vector2(1080f, 1920f));
         root.SetAsFirstSibling();
@@ -857,7 +892,7 @@ public class GameManager : MonoBehaviour
         var street = CreatePanel("StreetBackground", root, Vector2.zero, new Vector2(1080f, 1920f), new Color(0.70f, 0.88f, 1f), false);
 
         var controller = root.gameObject.AddComponent<BackgroundController>();
-        controller.Configure(home, street, homeSprite);
+        controller.Configure(home, street, homeSprite, streetSprite);
         return controller;
     }
 

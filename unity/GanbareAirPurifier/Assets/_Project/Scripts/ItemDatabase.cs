@@ -108,6 +108,7 @@ public class ItemDatabase
                 columns[8]);
 
             data.Sprite = LoadSpriteOrNull(data.SpriteName);
+            data.SuctionSprite = LoadOptionalSpriteOrNull($"{data.SpriteName}_Surprised");
             if (!itemsByStage.TryGetValue(data.Stage, out var stageItems))
             {
                 stageItems = new List<ItemData>();
@@ -140,6 +141,23 @@ public class ItemDatabase
             Debug.LogWarning($"[ItemDatabase] Item sprite not found, using placeholder: {spriteName}");
         }
 
+        return sprite;
+    }
+
+    public static Sprite LoadOptionalSpriteOrNull(string spriteName)
+    {
+        if (string.IsNullOrWhiteSpace(spriteName))
+        {
+            return null;
+        }
+
+        var sprite = Resources.Load<Sprite>(spriteName);
+#if UNITY_EDITOR
+        if (sprite == null)
+        {
+            sprite = LoadEditorSprite(spriteName);
+        }
+#endif
         return sprite;
     }
 
