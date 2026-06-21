@@ -29,6 +29,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Text comboText;
     [SerializeField] private Text levelText;
     [SerializeField] private Text levelNumberText;
+    [SerializeField] private Image levelPanelFill;
     [SerializeField] private Text stageText;
     [SerializeField] private Text resultText;
     [SerializeField] private Image gaugeFill;
@@ -428,21 +429,22 @@ public class GameManager : MonoBehaviour
         timeText = CreateText("TIME_Text", root, "TIME 90", new Vector2(-390f, 830f), new Vector2(260f, 70f), 42, Color.white, TextAnchor.MiddleLeft);
         scoreText = CreateText("SCORE_Text", root, "SCORE 0", new Vector2(-390f, 760f), new Vector2(320f, 70f), 36, Color.white, TextAnchor.MiddleLeft);
         comboText = CreateText("COMBO_Text", root, "COMBO 0", new Vector2(360f, 760f), new Vector2(300f, 70f), 36, Color.white, TextAnchor.MiddleRight);
-        var levelPanel = CreatePanel("SuctionLevel_Panel", root, new Vector2(430f, -390f), new Vector2(190f, 390f), Color.white, true);
+        var levelPanel = CreatePanel("SuctionLevel_Panel", root, new Vector2(-330f, -600f), new Vector2(190f, 390f), Color.white, false);
         var levelPanelOutline = levelPanel.gameObject.AddComponent<Outline>();
         levelPanelOutline.effectColor = new Color(1f, 1f, 1f, 0.95f);
         levelPanelOutline.effectDistance = new Vector2(8f, -8f);
-        CreatePanel("SuctionLevel_PanelFill", levelPanel.rectTransform, Vector2.zero, new Vector2(172f, 372f), new Color(1f, 0.89f, 0.22f), true);
+        levelPanelFill = CreatePanel("SuctionLevel_PanelFill", levelPanel.rectTransform, Vector2.zero, new Vector2(172f, 372f), LevelColorUtility.GetLevelColor(gaugeManager.SuctionLevel), false);
         levelText = CreateText("SuctionLevel_Label", levelPanel.rectTransform, "吸引Lv", new Vector2(0f, 135f), new Vector2(160f, 60f), 28, new Color(0.12f, 0.18f, 0.28f), TextAnchor.MiddleCenter);
         levelNumberText = CreateText("SuctionLevel_Number", levelPanel.rectTransform, "1", new Vector2(0f, -30f), new Vector2(180f, 260f), 150, new Color(0.10f, 0.16f, 0.28f), TextAnchor.MiddleCenter);
         stageText = CreateText("Stage_Text", root, "家ステージ", new Vector2(0f, 720f), new Vector2(380f, 70f), 40, new Color(0.18f, 0.22f, 0.30f), TextAnchor.MiddleCenter);
         resultText = CreateText("Result_Text", root, "クリックで吸引", new Vector2(0f, -570f), new Vector2(520f, 80f), 38, new Color(0.16f, 0.20f, 0.28f), TextAnchor.MiddleCenter);
 
-        var gaugeBack = CreatePanel("Gauge_Back", root, new Vector2(0f, 660f), new Vector2(520f, 34f), Color.white, false);
-        gaugeFill = CreatePanel("Gauge_Fill", gaugeBack.rectTransform, new Vector2(-250f, 0f), new Vector2(500f, 22f), new Color(0.15f, 0.76f, 1f), false);
-        gaugeFill.rectTransform.pivot = new Vector2(0f, 0.5f);
+        var gaugeBack = CreatePanel("Gauge_Back", root, new Vector2(-460f, -600f), new Vector2(70f, 390f), Color.white, false);
+        CreatePanel("Gauge_BackFill", gaugeBack.rectTransform, Vector2.zero, new Vector2(52f, 372f), new Color(0.10f, 0.20f, 0.30f, 0.35f), false);
+        gaugeFill = CreatePanel("Gauge_Fill", gaugeBack.rectTransform, new Vector2(0f, -176f), new Vector2(42f, 0f), new Color(0.15f, 0.76f, 1f), false);
+        gaugeFill.rectTransform.pivot = new Vector2(0.5f, 0f);
 
-        fastForwardButton = CreateButton("FastForward_Button", root, "早送り\n長押し", new Vector2(-360f, -760f), new Vector2(300f, 130f), new Color(0.26f, 0.62f, 1f));
+        fastForwardButton = CreateButton("FastForward_Button", root, "早送り\n長押し", new Vector2(360f, -760f), new Vector2(300f, 130f), new Color(0.26f, 0.62f, 1f));
         var fastButton = fastForwardButton.gameObject.AddComponent<FastForwardButton>();
         fastButton.Configure(this);
 
@@ -741,6 +743,7 @@ public class GameManager : MonoBehaviour
         if (levelNumberText != null && lastDisplayedSuctionLevel != gaugeManager.SuctionLevel)
         {
             levelNumberText.text = gaugeManager.SuctionLevel.ToString();
+            UpdateLevelPanelColor();
             if (lastDisplayedSuctionLevel >= 0)
             {
                 PlayLevelNumberBounce();
@@ -748,12 +751,22 @@ public class GameManager : MonoBehaviour
             lastDisplayedSuctionLevel = gaugeManager.SuctionLevel;
         }
         stageText.text = stageManager.CurrentStageName;
-        gaugeFill.rectTransform.sizeDelta = new Vector2(500f * gaugeManager.GaugeRate, 22f);
+        gaugeFill.rectTransform.sizeDelta = new Vector2(42f, 352f * gaugeManager.GaugeRate);
 
         if (IsTimeUp)
         {
             resultText.text = "TIME UP";
         }
+    }
+
+    private void UpdateLevelPanelColor()
+    {
+        if (levelPanelFill == null)
+        {
+            return;
+        }
+
+        levelPanelFill.color = LevelColorUtility.GetLevelColor(gaugeManager.SuctionLevel);
     }
 
     private void ApplyStageVisuals(bool animateStageUp)
