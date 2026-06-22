@@ -12,7 +12,7 @@ public class TitleSceneController : MonoBehaviour
     [SerializeField] private Text startText;
     [SerializeField] private Image fadePanel;
     [SerializeField] private string gameplaySceneName = "Main";
-    [SerializeField] private float fadeDuration = 0.55f;
+    [SerializeField] private float fadeDuration = 0.32f;
 
     private bool isTransitioning;
     private Tween imageFloatTween;
@@ -34,6 +34,7 @@ public class TitleSceneController : MonoBehaviour
 
         if (fadePanel != null)
         {
+            StretchFadePanelToCanvas();
             fadePanel.color = new Color(0f, 0f, 0f, 0f);
             fadePanel.raycastTarget = false;
         }
@@ -82,11 +83,34 @@ public class TitleSceneController : MonoBehaviour
             return;
         }
 
+        StretchFadePanelToCanvas();
         fadePanel.raycastTarget = true;
         fadePanel.DOFade(1f, fadeDuration)
             .SetUpdate(true)
             .SetEase(Ease.InOutSine)
             .OnComplete(() => SceneManager.LoadScene(gameplaySceneName));
+    }
+
+    private void StretchFadePanelToCanvas()
+    {
+        if (fadePanel == null)
+        {
+            return;
+        }
+
+        var rectTransform = fadePanel.rectTransform;
+        if (rectTransform == null)
+        {
+            return;
+        }
+
+        rectTransform.anchorMin = Vector2.zero;
+        rectTransform.anchorMax = Vector2.one;
+        rectTransform.pivot = new Vector2(0.5f, 0.5f);
+        rectTransform.anchoredPosition = Vector2.zero;
+        rectTransform.sizeDelta = Vector2.zero;
+        rectTransform.offsetMin = Vector2.zero;
+        rectTransform.offsetMax = Vector2.zero;
     }
 
     private static bool WasStartPressed()

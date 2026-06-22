@@ -9,13 +9,13 @@ public class BackgroundController : MonoBehaviour
     [SerializeField] private Image streetBackground;
     [SerializeField] private Image cityBackground;
     [SerializeField] private Image spaceBackground;
-    [SerializeField] private float homeInitialScale = 1.2f;
+    [SerializeField] private float homeInitialScale = 1.0f;
     [SerializeField] private float homeStageUpScale = 1.0f;
-    [SerializeField] private float streetInitialScale = 1.2f;
+    [SerializeField] private float streetInitialScale = 1.0f;
     [SerializeField] private float streetStageProgressScale = 1.0f;
-    [SerializeField] private float cityInitialScale = 1.2f;
+    [SerializeField] private float cityInitialScale = 1.0f;
     [SerializeField] private float cityStageProgressScale = 1.0f;
-    [SerializeField] private float spaceInitialScale = 1.2f;
+    [SerializeField] private float spaceInitialScale = 1.0f;
     [SerializeField] private float spaceStageProgressScale = 1.0f;
     [SerializeField] private float stageUpDuration = 0.6f;
 
@@ -42,6 +42,7 @@ public class BackgroundController : MonoBehaviour
             homeBackground.sprite = homeSprite;
             homeBackground.preserveAspect = true;
             homeBackground.color = homeSprite != null ? Color.white : new Color(1f, 0.92f, 0.74f);
+            homeBackground.GetComponent<AspectFillImage>()?.Apply();
         }
 
         if (streetBackground != null)
@@ -49,6 +50,7 @@ public class BackgroundController : MonoBehaviour
             streetBackground.sprite = streetSprite;
             streetBackground.preserveAspect = true;
             streetBackground.color = streetSprite != null ? Color.white : new Color(0.70f, 0.88f, 1f);
+            streetBackground.GetComponent<AspectFillImage>()?.Apply();
         }
 
         if (cityBackground != null)
@@ -56,6 +58,7 @@ public class BackgroundController : MonoBehaviour
             cityBackground.sprite = citySprite;
             cityBackground.preserveAspect = true;
             cityBackground.color = citySprite != null ? Color.white : new Color(0.55f, 0.70f, 0.92f);
+            cityBackground.GetComponent<AspectFillImage>()?.Apply();
         }
 
         if (spaceBackground != null)
@@ -63,6 +66,7 @@ public class BackgroundController : MonoBehaviour
             spaceBackground.sprite = spaceSprite;
             spaceBackground.preserveAspect = true;
             spaceBackground.color = spaceSprite != null ? Color.white : new Color(0.10f, 0.08f, 0.22f);
+            spaceBackground.GetComponent<AspectFillImage>()?.Apply();
         }
 
         SetHomeBackground();
@@ -180,18 +184,8 @@ public class BackgroundController : MonoBehaviour
 
     public void PlayHomeStageZoomOut(Action onComplete = null)
     {
-        if (homeBackground == null)
-        {
-            onComplete?.Invoke();
-            return;
-        }
-
-        homeBackground.gameObject.SetActive(true);
         activeTween?.Kill();
-        activeTween = homeBackground.rectTransform
-            .DOScale(Vector3.one * homeStageUpScale, stageUpDuration)
-            .SetEase(Ease.OutCubic)
-            .OnComplete(() => onComplete?.Invoke());
+        onComplete?.Invoke();
     }
 
     public void PlayStageUpBackgroundTransition(Action onComplete = null)
@@ -205,49 +199,19 @@ public class BackgroundController : MonoBehaviour
 
     public void PlayStreetStageZoomOut(Action onComplete = null)
     {
-        if (streetBackground == null)
-        {
-            onComplete?.Invoke();
-            return;
-        }
-
-        streetBackground.gameObject.SetActive(true);
         activeTween?.Kill();
-        activeTween = streetBackground.rectTransform
-            .DOScale(Vector3.one * streetStageProgressScale, stageUpDuration)
-            .SetEase(Ease.OutCubic)
-            .OnComplete(() => onComplete?.Invoke());
+        onComplete?.Invoke();
     }
 
     public void PlayCityStageZoomOut(Action onComplete = null)
     {
-        if (cityBackground == null)
-        {
-            onComplete?.Invoke();
-            return;
-        }
-
-        cityBackground.gameObject.SetActive(true);
         activeTween?.Kill();
-        activeTween = cityBackground.rectTransform
-            .DOScale(Vector3.one * cityStageProgressScale, stageUpDuration)
-            .SetEase(Ease.OutCubic)
-            .OnComplete(() => onComplete?.Invoke());
+        onComplete?.Invoke();
     }
 
     public void PlaySpaceStageZoomOut(Action onComplete = null)
     {
-        if (spaceBackground == null)
-        {
-            onComplete?.Invoke();
-            return;
-        }
-
-        spaceBackground.gameObject.SetActive(true);
         activeTween?.Kill();
-        activeTween = spaceBackground.rectTransform
-            .DOScale(Vector3.one * spaceStageProgressScale, stageUpDuration)
-            .SetEase(Ease.OutCubic)
-            .OnComplete(() => onComplete?.Invoke());
+        onComplete?.Invoke();
     }
 }

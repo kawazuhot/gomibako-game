@@ -12,6 +12,7 @@ public class FadeController : MonoBehaviour
     public void Configure(Image overlay)
     {
         overlayImage = overlay;
+        StretchOverlayToCanvas();
         SetAlpha(0f);
         SetBlocksInput(false);
     }
@@ -33,6 +34,7 @@ public class FadeController : MonoBehaviour
             yield break;
         }
 
+        StretchOverlayToCanvas();
         SetBlocksInput(true);
         activeTween?.Kill();
 
@@ -69,5 +71,27 @@ public class FadeController : MonoBehaviour
         {
             overlayImage.raycastTarget = blocksInput;
         }
+    }
+
+    private void StretchOverlayToCanvas()
+    {
+        if (overlayImage == null)
+        {
+            return;
+        }
+
+        var rectTransform = overlayImage.rectTransform;
+        if (rectTransform == null)
+        {
+            return;
+        }
+
+        rectTransform.anchorMin = Vector2.zero;
+        rectTransform.anchorMax = Vector2.one;
+        rectTransform.pivot = new Vector2(0.5f, 0.5f);
+        rectTransform.anchoredPosition = Vector2.zero;
+        rectTransform.sizeDelta = Vector2.zero;
+        rectTransform.offsetMin = Vector2.zero;
+        rectTransform.offsetMax = Vector2.zero;
     }
 }

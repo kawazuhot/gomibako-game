@@ -109,10 +109,16 @@ public class ItemData
     {
         switch (id)
         {
+            case "home_fridge":
+                return 1.7f;
+            case "home_chair":
+                return 1.5f;
             case "street_high_school_girl":
             case "street_college_student":
             case "street_drunk_man":
-                return 1.5f;
+                return 1.8f;
+            case "street_vending_machine":
+                return 1.28f;
             default:
                 return 1.0f;
         }

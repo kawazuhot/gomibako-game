@@ -12,6 +12,8 @@ public class ItemController : MonoBehaviour
     [SerializeField] private Image levelBadgeImage;
     [SerializeField] private Text levelBadgeText;
     [SerializeField] private Outline outline;
+    [SerializeField] private Vector2 warningLabelOffset = new Vector2(92f, 58f);
+    [SerializeField] private Vector2 closeLevelLabelOffset = new Vector2(96f, 62f);
 
     private Tween moveTween;
     private Tween breathingTween;
@@ -131,7 +133,7 @@ public class ItemController : MonoBehaviour
             levelBadgeImage.color = data.IsBomb ? new Color(1f, 0.10f, 0.08f, 0.98f) : badgeColor;
             var badgeRect = levelBadgeImage.rectTransform;
             badgeRect.sizeDelta = data.IsBomb ? new Vector2(82f, 58f) : GetBadgeSize(requiredLevel);
-            badgeRect.anchoredPosition = new Vector2(normalSize.x * visualScale * 0.38f, normalSize.y * visualScale * 0.36f);
+            badgeRect.anchoredPosition = GetBadgeOffset(data, visualScale);
             badgeRect.localRotation = Quaternion.Euler(0f, 0f, data.IsBomb ? 8f : -6f);
             badgeRect.SetAsLastSibling();
         }
@@ -206,6 +208,27 @@ public class ItemController : MonoBehaviour
         }
 
         return new Vector2(120f, 58f);
+    }
+
+    private Vector2 GetBadgeOffset(ItemData data, float visualScale)
+    {
+        if (data.IsBomb)
+        {
+            return warningLabelOffset;
+        }
+
+        switch (data.Id)
+        {
+            case "home_fridge":
+            case "home_chair":
+            case "street_high_school_girl":
+            case "street_college_student":
+            case "street_drunk_man":
+            case "street_vending_machine":
+                return closeLevelLabelOffset;
+            default:
+                return new Vector2(normalSize.x * visualScale * 0.38f, normalSize.y * visualScale * 0.36f);
+        }
     }
 
     public void MarkResolving()

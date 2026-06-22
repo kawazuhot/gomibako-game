@@ -79,8 +79,9 @@ public static class GanbareAirPurifierMvpSceneBuilder
         var titleSprite = AssetDatabase.LoadAssetAtPath<Sprite>(TitleMainVisualPath);
         var titleImage = CreatePanel("Title_MainVisual", root, Vector2.zero, new Vector2(1080f, 1920f), Color.white, false);
         titleImage.sprite = titleSprite;
-        titleImage.preserveAspect = false;
+        titleImage.preserveAspect = true;
         titleImage.color = titleSprite != null ? Color.white : new Color(1f, 0.94f, 0.52f, 1f);
+        titleImage.gameObject.AddComponent<AspectFillImage>();
         titleImage.transform.SetAsLastSibling();
 
         var startText = CreateText("Start_Text", root, "タップでスタート", new Vector2(0f, -760f), new Vector2(620f, 90f), 46, Color.white, TextAnchor.MiddleCenter);
@@ -92,11 +93,12 @@ public static class GanbareAirPurifierMvpSceneBuilder
         }
 
         var fadePanel = CreatePanel("FadePanel", root, Vector2.zero, new Vector2(1080f, 1920f), new Color(0f, 0f, 0f, 0f), false);
+        StretchToParent(fadePanel.rectTransform);
         fadePanel.transform.SetAsLastSibling();
 
         var controllerObject = new GameObject("TitleSceneController");
         var controller = controllerObject.AddComponent<TitleSceneController>();
-        controller.Configure(titleImage, startText, fadePanel, GameplaySceneName, 0.55f);
+        controller.Configure(titleImage, startText, fadePanel, GameplaySceneName, 0.32f);
 
         background.transform.SetAsFirstSibling();
         EditorSceneManager.SaveScene(scene, TitleScenePath);
@@ -137,6 +139,22 @@ public static class GanbareAirPurifierMvpSceneBuilder
         image.color = color;
         image.raycastTarget = raycastTarget;
         return image;
+    }
+
+    private static void StretchToParent(RectTransform rect)
+    {
+        if (rect == null)
+        {
+            return;
+        }
+
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = Vector2.zero;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
     }
 
     private static Text CreateText(string name, RectTransform parent, string text, Vector2 anchoredPosition, Vector2 size, int fontSize, Color color, TextAnchor alignment)

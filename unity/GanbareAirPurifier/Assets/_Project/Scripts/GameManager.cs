@@ -123,6 +123,7 @@ public class GameManager : MonoBehaviour
         ItemDatabase.SetSpriteDatabase(itemSpriteDatabase);
         EnsureEventSystem();
         EnsureRuntimeView();
+        EnsureFullscreenRuntimeOverlays();
         EnsureComponents();
     }
 
@@ -460,7 +461,7 @@ public class GameManager : MonoBehaviour
 
         var root = canvasObject.GetComponent<RectTransform>();
         backgroundController = CreateBackgroundController(root, homeStageBackgroundSprite, streetStageBackgroundSprite, cityStageBackgroundSprite, spaceStageBackgroundSprite);
-        CreatePanel("Play_Lane", root, new Vector2(0f, 0f), new Vector2(1080f, 520f), new Color(1f, 0.84f, 0.42f, 0.32f), false);
+        CreatePanel("Play_Lane", root, new Vector2(0f, 0f), new Vector2(1080f, 520f), new Color(1f, 0.84f, 0.42f, 0f), false);
 
         itemLayer = CreateRect("ItemLayer", root, Vector2.zero, new Vector2(1080f, 1920f));
         itemTemplate = CreateItemTemplate(itemLayer);
@@ -479,7 +480,7 @@ public class GameManager : MonoBehaviour
         timeText = CreateReadableText("TIME_Text", root, "TIME 90", new Vector2(0f, 825f), new Vector2(360f, 92f), 62, new Color(1f, 0.94f, 0.22f), TextAnchor.MiddleCenter);
         scoreText = CreateReadableText("SCORE_Text", root, "SCORE 0", new Vector2(0f, 742f), new Vector2(440f, 62f), 36, Color.white, TextAnchor.MiddleCenter);
         comboText = CreateReadableText("COMBO_Text", root, "COMBO 0", new Vector2(0f, 682f), new Vector2(360f, 56f), 32, new Color(0.92f, 1f, 1f), TextAnchor.MiddleCenter);
-        var levelPanel = CreatePanel("SuctionLevel_Panel", root, new Vector2(395f, -600f), new Vector2(190f, 390f), Color.white, false);
+        var levelPanel = CreatePanel("SuctionLevel_Panel", root, new Vector2(-360f, 650f), new Vector2(190f, 390f), Color.white, false);
         var levelPanelOutline = levelPanel.gameObject.AddComponent<Outline>();
         levelPanelOutline.effectColor = new Color(1f, 1f, 1f, 0.95f);
         levelPanelOutline.effectDistance = new Vector2(8f, -8f);
@@ -489,12 +490,12 @@ public class GameManager : MonoBehaviour
         stageText = CreateReadableText("Stage_Text", root, "家ステージ", new Vector2(375f, 835f), new Vector2(300f, 56f), 28, Color.white, TextAnchor.MiddleCenter);
         resultText = CreateReadableText("Result_Text", root, "クリックで吸引", new Vector2(375f, 770f), new Vector2(300f, 56f), 26, new Color(0.92f, 1f, 1f), TextAnchor.MiddleCenter);
 
-        var gaugeBack = CreatePanel("Gauge_Back", root, new Vector2(265f, -600f), new Vector2(70f, 390f), Color.white, false);
+        var gaugeBack = CreatePanel("Gauge_Back", root, new Vector2(-490f, 650f), new Vector2(70f, 390f), Color.white, false);
         CreatePanel("Gauge_BackFill", gaugeBack.rectTransform, Vector2.zero, new Vector2(52f, 372f), new Color(0.10f, 0.20f, 0.30f, 0.35f), false);
         gaugeFill = CreatePanel("Gauge_Fill", gaugeBack.rectTransform, new Vector2(0f, -176f), new Vector2(42f, 0f), new Color(0.15f, 0.76f, 1f), false);
         gaugeFill.rectTransform.pivot = new Vector2(0.5f, 0f);
 
-        fastForwardButton = CreateButton("FastForward_Button", root, "早送り\n長押し", new Vector2(-360f, -610f), new Vector2(300f, 130f), new Color(0.26f, 0.62f, 1f));
+        fastForwardButton = CreateButton("FastForward_Button", root, "x2\n早送り", new Vector2(-260f, -650f), new Vector2(360f, 160f), new Color(0.26f, 0.62f, 1f));
         var fastButton = fastForwardButton.gameObject.AddComponent<FastForwardButton>();
         fastButton.Configure(this);
 
@@ -680,32 +681,10 @@ public class GameManager : MonoBehaviour
         EndSuctionHold();
         resultText.text = "ステージアップ!";
 
-        var zoomDone = false;
-        if (previousStage == PurifierStage.Home && nextStage == PurifierStage.Street)
-        {
-            backgroundController.PlayHomeStageZoomOut(() => zoomDone = true);
-        }
-        else if (previousStage == PurifierStage.Street && nextStage == PurifierStage.City && previousLevel == 6 && nextLevel == 7)
-        {
-            backgroundController.PlayStreetStageZoomOut(() => zoomDone = true);
-        }
-        else if (previousStage == PurifierStage.City && nextStage == PurifierStage.Space)
-        {
-            backgroundController.PlayCityStageZoomOut(() => zoomDone = true);
-        }
-        else
-        {
-            zoomDone = true;
-        }
-
-        while (!zoomDone)
-        {
-            yield return null;
-        }
-
         if (fadeController != null)
         {
-            yield return fadeController.FadeOut(0.4f);
+            yield return fadeController.FadeOut(0.3f);
+            yield return new WaitForSecondsRealtime(0.12f);
         }
 
         ClearActiveItems();
@@ -862,14 +841,7 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        if (animateStageUp)
-        {
-            backgroundController.PlayStageUpBackgroundTransition();
-        }
-        else
-        {
-            backgroundController.SetStreetBackground();
-        }
+        backgroundController.SetStreetBackground();
     }
 
     private void PlayLevelNumberBounce()
@@ -955,6 +927,15 @@ public class GameManager : MonoBehaviour
         outline.effectDistance = new Vector2(6f, -6f);
         var inner = CreatePanel("Fill", image.rectTransform, Vector2.zero, size - new Vector2(14f, 14f), color, false);
         var label = CreateText("Label", image.rectTransform, text, Vector2.zero, size, 38, Color.white, TextAnchor.MiddleCenter);
+        var labelOutline = label.GetComponent<Outline>();
+        if (labelOutline != null)
+        {
+            labelOutline.effectColor = new Color(0f, 0.12f, 0.30f, 0.95f);
+            labelOutline.effectDistance = new Vector2(4f, -4f);
+        }
+        var labelShadow = label.gameObject.AddComponent<Shadow>();
+        labelShadow.effectColor = new Color(0f, 0f, 0f, 0.45f);
+        labelShadow.effectDistance = new Vector2(4f, -4f);
         label.transform.SetAsLastSibling();
         var button = image.gameObject.AddComponent<Button>();
         button.targetGraphic = inner;
@@ -1006,6 +987,10 @@ public class GameManager : MonoBehaviour
         var street = CreatePanel("StreetBackground", root, Vector2.zero, new Vector2(1080f, 1920f), new Color(0.70f, 0.88f, 1f), false);
         var city = CreatePanel("CityBackground", root, Vector2.zero, new Vector2(1080f, 1920f), new Color(0.55f, 0.70f, 0.92f), false);
         var space = CreatePanel("SpaceBackground", root, Vector2.zero, new Vector2(1080f, 1920f), new Color(0.10f, 0.08f, 0.22f), false);
+        home.gameObject.AddComponent<AspectFillImage>();
+        street.gameObject.AddComponent<AspectFillImage>();
+        city.gameObject.AddComponent<AspectFillImage>();
+        space.gameObject.AddComponent<AspectFillImage>();
 
         var controller = root.gameObject.AddComponent<BackgroundController>();
         controller.Configure(home, street, city, space, homeSprite, streetSprite, citySprite, spaceSprite);
@@ -1015,6 +1000,7 @@ public class GameManager : MonoBehaviour
     private static FadeController CreateFadeController(RectTransform parent)
     {
         var overlay = CreatePanel("FadeOverlay", parent, Vector2.zero, new Vector2(1080f, 1920f), new Color(0f, 0f, 0f, 0f), true);
+        StretchToParent(overlay.rectTransform);
         overlay.rectTransform.SetAsLastSibling();
         var controller = overlay.gameObject.AddComponent<FadeController>();
         controller.Configure(overlay);
@@ -1041,7 +1027,7 @@ public class GameManager : MonoBehaviour
 
     private static TargetMarkerController CreateTargetMarkerInputArea(string name, RectTransform parent, Vector2 anchoredPosition, Vector2 size, GameManager manager, RectTransform marker)
     {
-        var image = CreatePanel(name, parent, anchoredPosition, size, new Color(1f, 1f, 1f, 0.01f), true);
+        var image = CreatePanel(name, parent, anchoredPosition, size, new Color(1f, 1f, 1f, 0f), true);
         var controller = image.gameObject.AddComponent<TargetMarkerController>();
         controller.Configure(manager, marker, parent);
         return controller;
@@ -1078,7 +1064,7 @@ public class GameManager : MonoBehaviour
 
     private static AirPurifierController CreateAirPurifier(RectTransform parent, Sprite normalSprite, Sprite suctionSprite, Sprite failSprite)
     {
-        var rootImage = CreatePanel("AirPurifier", parent, new Vector2(0f, -590f), new Vector2(660f, 660f), Color.white, false);
+        var rootImage = CreatePanel("AirPurifier", parent, new Vector2(245f, -590f), new Vector2(660f, 660f), Color.white, false);
         rootImage.sprite = normalSprite;
         rootImage.preserveAspect = true;
 
@@ -1103,5 +1089,66 @@ public class GameManager : MonoBehaviour
             font = Resources.GetBuiltinResource<Font>("Arial.ttf");
         }
         return font;
+    }
+
+    private void EnsureFullscreenRuntimeOverlays()
+    {
+        StretchNamedRect("FadeOverlay");
+        SetNamedImageAlpha("Play_Lane", 0f);
+        SetNamedImageAlpha("TargetMarker_InputArea", 0f);
+    }
+
+    private void StretchNamedRect(string objectName)
+    {
+        if (canvas == null)
+        {
+            return;
+        }
+
+        var children = canvas.GetComponentsInChildren<RectTransform>(true);
+        foreach (var child in children)
+        {
+            if (child.name == objectName)
+            {
+                StretchToParent(child);
+            }
+        }
+    }
+
+    private void SetNamedImageAlpha(string objectName, float alpha)
+    {
+        if (canvas == null)
+        {
+            return;
+        }
+
+        var images = canvas.GetComponentsInChildren<Image>(true);
+        foreach (var image in images)
+        {
+            if (image.name != objectName)
+            {
+                continue;
+            }
+
+            var color = image.color;
+            color.a = alpha;
+            image.color = color;
+        }
+    }
+
+    private static void StretchToParent(RectTransform rect)
+    {
+        if (rect == null)
+        {
+            return;
+        }
+
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = Vector2.zero;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
     }
 }
