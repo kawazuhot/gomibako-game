@@ -13,18 +13,18 @@ public class FastForwardButton : MonoBehaviour, IPointerDownHandler, IPointerUpH
     public void OnPointerDown(PointerEventData eventData)
     {
         gameManager?.SuppressPointerSuckInput();
-        gameManager?.SetFastForward(true);
+        gameManager?.SetFastForwardButtonHeld(true);
     }
 
     public void OnPointerUp(PointerEventData eventData)
     {
         gameManager?.SuppressPointerSuckInput();
-        gameManager?.SetFastForward(false);
+        gameManager?.SetFastForwardButtonHeld(false);
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
         gameManager?.SuppressPointerSuckInput();
-        gameManager?.SetFastForward(false);
+        gameManager?.SetFastForwardButtonHeld(false);
     }
 }

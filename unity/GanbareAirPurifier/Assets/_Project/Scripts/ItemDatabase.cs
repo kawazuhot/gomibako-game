@@ -15,10 +15,31 @@ public class ItemDatabase
         "Assets/_Project/Art/Effects"
     };
     private static readonly HashSet<string> WarnedMissingSprites = new HashSet<string>();
+    private static ItemSpriteDatabase spriteDatabase;
 
     private readonly Dictionary<PurifierStage, List<ItemData>> itemsByStage = new Dictionary<PurifierStage, List<ItemData>>();
 
     public int TotalCount { get; private set; }
+
+    public static void SetSpriteDatabase(ItemSpriteDatabase database)
+    {
+        spriteDatabase = database;
+        WarnedMissingSprites.Clear();
+    }
+
+    public static ItemDatabase LoadDefault(TextAsset csvAsset, ItemSpriteDatabase database)
+    {
+        SetSpriteDatabase(database);
+        var itemDatabase = new ItemDatabase();
+        if (csvAsset != null)
+        {
+            itemDatabase.LoadCsv(csvAsset.text, csvAsset.name);
+            return itemDatabase;
+        }
+
+        Debug.LogError("[ItemDatabase] ItemMaster TextAsset is not assigned. Falling back to development file path.");
+        return LoadDefault();
+    }
 
     public static ItemDatabase LoadDefault()
     {
@@ -129,7 +150,11 @@ public class ItemDatabase
             return null;
         }
 
-        var sprite = Resources.Load<Sprite>(spriteName);
+        var sprite = spriteDatabase != null ? spriteDatabase.GetSprite(spriteName) : null;
+        if (sprite == null)
+        {
+            sprite = Resources.Load<Sprite>(spriteName);
+        }
 #if UNITY_EDITOR
         if (sprite == null)
         {
@@ -151,7 +176,11 @@ public class ItemDatabase
             return null;
         }
 
-        var sprite = Resources.Load<Sprite>(spriteName);
+        var sprite = spriteDatabase != null ? spriteDatabase.GetSprite(spriteName) : null;
+        if (sprite == null)
+        {
+            sprite = Resources.Load<Sprite>(spriteName);
+        }
 #if UNITY_EDITOR
         if (sprite == null)
         {

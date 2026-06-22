@@ -102,7 +102,7 @@ public class ItemData
 
     private static float GetStageScaleMultiplier(PurifierStage stage)
     {
-        return stage == PurifierStage.Street ? 2.5f : 1.0f;
+        return stage == PurifierStage.Street || stage == PurifierStage.City || stage == PurifierStage.Space ? 2.5f : 1.0f;
     }
 
     private static float GetItemScaleMultiplier(string id)

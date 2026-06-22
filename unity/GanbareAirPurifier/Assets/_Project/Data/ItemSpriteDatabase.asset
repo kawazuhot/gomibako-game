@@ -1,0 +1,171 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a0b6fafd0cd84022b64a32063ede60a, type: 3}
+  m_Name: ItemSpriteDatabase
+  m_EditorClassIdentifier: Assembly-CSharp::ItemSpriteDatabase
+  entries:
+  - spriteName: Effect_BombExplosion
+    sprite: {fileID: 21300000, guid: 5ff154ad83c1d486b9aa331e43f3bc49, type: 3}
+  - spriteName: Item_Bomb
+    sprite: {fileID: 21300000, guid: 7a84fac4e3c9549b880a8ecfc61274b3, type: 3}
+  - spriteName: Item_City_Ambulance
+    sprite: {fileID: 21300000, guid: d53e6c8e9c41f414b95084113b5a508e, type: 3}
+  - spriteName: Item_City_Apartment
+    sprite: {fileID: 21300000, guid: 35147b378440c44628f505b86ff4f1e7, type: 3}
+  - spriteName: Item_City_Boat
+    sprite: {fileID: 21300000, guid: 0f2c7fb39c2824d65af3f4225b50e57d, type: 3}
+  - spriteName: Item_City_Bus
+    sprite: {fileID: 21300000, guid: 09a138e7c54cd425b901555c9fdc11ff, type: 3}
+  - spriteName: Item_City_ConvenienceStore8
+    sprite: {fileID: 21300000, guid: 811271fb24acb41c985e640b41773de4, type: 3}
+  - spriteName: Item_City_EightbucksCafe
+    sprite: {fileID: 21300000, guid: 451a66afae25349989ea125431dec018, type: 3}
+  - spriteName: Item_City_FerrisWheel
+    sprite: {fileID: 21300000, guid: 05e9cd5ce3eeb43aebb2915023a372bd, type: 3}
+  - spriteName: Item_City_FireTruck
+    sprite: {fileID: 21300000, guid: c22ec527e507d41bdb1180360b4c9ee6, type: 3}
+  - spriteName: Item_City_FoodTruck
+    sprite: {fileID: 21300000, guid: f3f2b18aa14d74e40a8ee700b1c15998, type: 3}
+  - spriteName: Item_City_HachikoStatue
+    sprite: {fileID: 21300000, guid: b7d08f5758a9645509f622878bd273df, type: 3}
+  - spriteName: Item_City_HighriseOffice
+    sprite: {fileID: 21300000, guid: a1da9af9aee5d479f902807144f9fdfa, type: 3}
+  - spriteName: Item_City_KinjiroStatue
+    sprite: {fileID: 21300000, guid: e06dcc4c3f7d6408f82fe2302c5cea5f, type: 3}
+  - spriteName: Item_City_MANEOSGasStation
+    sprite: {fileID: 21300000, guid: 5e6500f28fc424fd1b1df8576375388f, type: 3}
+  - spriteName: Item_City_PAONMall
+    sprite: {fileID: 21300000, guid: 95ac40c2ee2b444f5855f23565966c82, type: 3}
+  - spriteName: Item_City_PedestrianBridge
+    sprite: {fileID: 21300000, guid: 07b29296b2303494eb8c529d5e319ad4, type: 3}
+  - spriteName: Item_City_PoliceBox
+    sprite: {fileID: 21300000, guid: 19c04c80c4a2441a682048413a10e081, type: 3}
+  - spriteName: Item_City_PoliceCar
+    sprite: {fileID: 21300000, guid: bfff5c81a488243199f1b734e710ce4a, type: 3}
+  - spriteName: Item_City_SALJumboJet
+    sprite: {fileID: 21300000, guid: bf6a871e9f30d43038a473558dc7991d, type: 3}
+  - spriteName: Item_City_Shinkansen
+    sprite: {fileID: 21300000, guid: cf000f91d113c412b871b3f2e6cde251, type: 3}
+  - spriteName: Item_City_Train
+    sprite: {fileID: 21300000, guid: c88bc66802d95475c8c32a15482d46d9, type: 3}
+  - spriteName: Item_Home_BottleCap
+    sprite: {fileID: 21300000, guid: d6e303f4a0ed34491ad6e21f3ccf8186, type: 3}
+  - spriteName: Item_Home_Can
+    sprite: {fileID: 21300000, guid: aa78e4a2fd334403f938dbc74da60db3, type: 3}
+  - spriteName: Item_Home_Chair
+    sprite: {fileID: 21300000, guid: a10038e1f4c134d559a9fb0f94c84ac7, type: 3}
+  - spriteName: Item_Home_Desk
+    sprite: {fileID: 21300000, guid: 86f6059c695f6468789149da4adba2b5, type: 3}
+  - spriteName: Item_Home_Dust
+    sprite: {fileID: 21300000, guid: d027c730f9a344b94b2d789f1717994f, type: 3}
+  - spriteName: Item_Home_Fluff
+    sprite: {fileID: 21300000, guid: 37cca62717b8143948c4f6a16009e31c, type: 3}
+  - spriteName: Item_Home_Fridge
+    sprite: {fileID: 21300000, guid: 17f92c24e4e3c42ec88d34828d7ac00b, type: 3}
+  - spriteName: Item_Home_Mug
+    sprite: {fileID: 21300000, guid: 56b1adc48e920475aaa6d44ba043c2d5, type: 3}
+  - spriteName: Item_Home_PC
+    sprite: {fileID: 21300000, guid: d466d5d26807048ad9aee931083f5b83, type: 3}
+  - spriteName: Item_Home_PaperBall
+    sprite: {fileID: 21300000, guid: 07f203171646644e3a5b71f4585a68be, type: 3}
+  - spriteName: Item_Home_Plush
+    sprite: {fileID: 21300000, guid: a357f4507cd144f9c85c09a9d58952e8, type: 3}
+  - spriteName: Item_Home_Receipt
+    sprite: {fileID: 21300000, guid: deab0ab6378384b2f97cdfe134e9a6ee, type: 3}
+  - spriteName: Item_Home_Remote
+    sprite: {fileID: 21300000, guid: 938ec5ee203634cc895539c46117a761, type: 3}
+  - spriteName: Item_Home_Smartphone
+    sprite: {fileID: 21300000, guid: fc05b5066385840bc9872c939f19d90f, type: 3}
+  - spriteName: Item_Home_SnackWrapper
+    sprite: {fileID: 21300000, guid: 2403b4a6370c0494aa496d6ce9ba8c0f, type: 3}
+  - spriteName: Item_Home_TV
+    sprite: {fileID: 21300000, guid: b8a56c6acf93a4eb6bf78d194b9836d5, type: 3}
+  - spriteName: Item_Space_Astronaut
+    sprite: {fileID: 21300000, guid: cc0e326f6c3ed4ed282b10446dfef970, type: 3}
+  - spriteName: Item_Space_Debris
+    sprite: {fileID: 21300000, guid: a7cbf8e86bad44742813d1e0e122bd33, type: 3}
+  - spriteName: Item_Space_Earth
+    sprite: {fileID: 21300000, guid: ccc38c2b3389a455f98963074857a48b, type: 3}
+  - spriteName: Item_Space_Galaxy
+    sprite: {fileID: 21300000, guid: 86a03926a5c024657bba16d8c4f1899a, type: 3}
+  - spriteName: Item_Space_Jupiter
+    sprite: {fileID: 21300000, guid: deb6325b058af4744b50ce2819a98400, type: 3}
+  - spriteName: Item_Space_Mars
+    sprite: {fileID: 21300000, guid: 412be1d1678c84030bbc769c6fbf2d02, type: 3}
+  - spriteName: Item_Space_Mercury
+    sprite: {fileID: 21300000, guid: f42d98a80e6154387a82d3c8f4a3ffc5, type: 3}
+  - spriteName: Item_Space_Meteor
+    sprite: {fileID: 21300000, guid: f3ef0d77688fa420380a8d2dc4864010, type: 3}
+  - spriteName: Item_Space_Moon
+    sprite: {fileID: 21300000, guid: b29a00b90262f4979b3297d7b88e0b16, type: 3}
+  - spriteName: Item_Space_Rocket
+    sprite: {fileID: 21300000, guid: 94dd61e9373e5435ca5a9ea32197da03, type: 3}
+  - spriteName: Item_Space_Satellite
+    sprite: {fileID: 21300000, guid: 6aa19fb9f2d0e4aa6bea7896537f39c5, type: 3}
+  - spriteName: Item_Space_Saturn
+    sprite: {fileID: 21300000, guid: 450904a7fb0b14a00a8f05adc8273067, type: 3}
+  - spriteName: Item_Space_ShootingStar
+    sprite: {fileID: 21300000, guid: 85204104ef3c14213888ae3b75cc42e7, type: 3}
+  - spriteName: Item_Space_Sun
+    sprite: {fileID: 21300000, guid: fa75493fba47242268c4a21f9acc04c1, type: 3}
+  - spriteName: Item_Space_UFO
+    sprite: {fileID: 21300000, guid: 61e452112cfb14e1d8390ff520930610, type: 3}
+  - spriteName: Item_Street_Basketball
+    sprite: {fileID: 21300000, guid: a7afd463f9db64a849237661734d269f, type: 3}
+  - spriteName: Item_Street_Bench
+    sprite: {fileID: 21300000, guid: d0f5dd5d198244ed084327c5d27637d0, type: 3}
+  - spriteName: Item_Street_Bicycle
+    sprite: {fileID: 21300000, guid: 4f11c36e12ae340c39ebd19e265e33bb, type: 3}
+  - spriteName: Item_Street_CafeSign
+    sprite: {fileID: 21300000, guid: e6bfeaaee93044029adf88458c4b3f77, type: 3}
+  - spriteName: Item_Street_Car
+    sprite: {fileID: 21300000, guid: 3331000e81f184d01aa6420859c95445, type: 3}
+  - spriteName: Item_Street_Cat
+    sprite: {fileID: 21300000, guid: 4c4bebed36dc64e2f90be9cda3a489e5, type: 3}
+  - spriteName: Item_Street_Cat_Surprised
+    sprite: {fileID: 21300000, guid: 460d16b9d33d0441080b96f1bf8d5086, type: 3}
+  - spriteName: Item_Street_CollegeStudent
+    sprite: {fileID: 21300000, guid: 42b5c5e4d5f014b30813300bfeab4ad1, type: 3}
+  - spriteName: Item_Street_CollegeStudent_Surprised
+    sprite: {fileID: 21300000, guid: abb84ab84073f4e02875212d8f0bd6ff, type: 3}
+  - spriteName: Item_Street_Cone
+    sprite: {fileID: 21300000, guid: 41f3323096b9c42f19c75d7f20f04706, type: 3}
+  - spriteName: Item_Street_Dog
+    sprite: {fileID: 21300000, guid: 2b29229a78b7c4421b477bf649548114, type: 3}
+  - spriteName: Item_Street_Dog_Surprised
+    sprite: {fileID: 21300000, guid: 92fbc4990929242bd9843d424c8de326, type: 3}
+  - spriteName: Item_Street_DrunkMan
+    sprite: {fileID: 21300000, guid: a34259e88cadf47b496c9737df6bc998, type: 3}
+  - spriteName: Item_Street_Flyer
+    sprite: {fileID: 21300000, guid: 1bf01de5aef8040d8b85440937438a2a, type: 3}
+  - spriteName: Item_Street_GarbageBag
+    sprite: {fileID: 21300000, guid: bfe6eb94599754284ad308ec03acb483, type: 3}
+  - spriteName: Item_Street_HighSchoolGirl
+    sprite: {fileID: 21300000, guid: 1f6481ba244454ecd94026a6e4698254, type: 3}
+  - spriteName: Item_Street_HighSchoolGirl_Surprised
+    sprite: {fileID: 21300000, guid: baecdd5d8b7e74454b8c57b208a98acb, type: 3}
+  - spriteName: Item_Street_LargeStone
+    sprite: {fileID: 21300000, guid: 0be522f5bbf6844d8bb77ef200ce7931, type: 3}
+  - spriteName: Item_Street_PlantPot
+    sprite: {fileID: 21300000, guid: 1d26525f7f6584c598152fc1de065ceb, type: 3}
+  - spriteName: Item_Street_Postbox
+    sprite: {fileID: 21300000, guid: d6ad28c1160724870a1d08e18f9c705c, type: 3}
+  - spriteName: Item_Street_SoccerBall
+    sprite: {fileID: 21300000, guid: af2abd94c2a45489986a5320e87b28d5, type: 3}
+  - spriteName: Item_Street_Streetlight
+    sprite: {fileID: 21300000, guid: ef9898396b3c74d2d89b6179404c7fd2, type: 3}
+  - spriteName: Item_Street_TrafficLight
+    sprite: {fileID: 21300000, guid: 7b11c9c1a4a3442bdb5db799cce4c666, type: 3}
+  - spriteName: Item_Street_Truck
+    sprite: {fileID: 21300000, guid: 7eb1246d5b81a487ba45cf5512f7acbb, type: 3}
+  - spriteName: Item_Street_VendingMachine
+    sprite: {fileID: 21300000, guid: 0964cfbb2b60441e388b8584c47401d5, type: 3}

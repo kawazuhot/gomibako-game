@@ -97,7 +97,7 @@ public class StageManager
             case PurifierStage.City:
                 return System.Math.Min(suctionLevel + 1, 9);
             case PurifierStage.Space:
-                return System.Math.Min(suctionLevel + 1, 14);
+                return System.Math.Min(suctionLevel + 1, 12);
             default:
                 return suctionLevel + 1;
         }

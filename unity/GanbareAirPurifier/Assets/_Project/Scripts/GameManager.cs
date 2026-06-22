@@ -42,7 +42,11 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Sprite airPurifierFailSprite;
     [SerializeField] private Sprite homeStageBackgroundSprite;
     [SerializeField] private Sprite streetStageBackgroundSprite;
+    [SerializeField] private Sprite cityStageBackgroundSprite;
+    [SerializeField] private Sprite spaceStageBackgroundSprite;
     [SerializeField] private Sprite bombExplosionSprite;
+    [SerializeField] private TextAsset itemMasterCsv;
+    [SerializeField] private ItemSpriteDatabase itemSpriteDatabase;
     [SerializeField] private ItemController itemTemplate;
     [SerializeField] private ItemSpawner itemSpawner;
     [SerializeField] private SuctionManager suctionManager;
@@ -58,6 +62,7 @@ public class GameManager : MonoBehaviour
     private readonly TimerManager timerManager = new TimerManager();
 
     private ItemController highlightedItem;
+    private bool buttonFastForward;
     private bool keyboardFastForward;
     private bool isSuctionHeld;
     private bool isStageTransitioning;
@@ -82,10 +87,19 @@ public class GameManager : MonoBehaviour
         airPurifierFailSprite = fail;
     }
 
-    public void ConfigureBackgroundSprites(Sprite homeBackground, Sprite streetBackground)
+    public void ConfigureBackgroundSprites(Sprite homeBackground, Sprite streetBackground, Sprite cityBackground, Sprite spaceBackground)
     {
         homeStageBackgroundSprite = homeBackground;
         streetStageBackgroundSprite = streetBackground;
+        cityStageBackgroundSprite = cityBackground;
+        spaceStageBackgroundSprite = spaceBackground;
+    }
+
+    public void ConfigureDataAssets(TextAsset itemMaster, ItemSpriteDatabase spriteDatabase)
+    {
+        itemMasterCsv = itemMaster;
+        itemSpriteDatabase = spriteDatabase;
+        ItemDatabase.SetSpriteDatabase(itemSpriteDatabase);
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -106,6 +120,7 @@ public class GameManager : MonoBehaviour
     private void Awake()
     {
         Time.timeScale = NormalTimeScale;
+        ItemDatabase.SetSpriteDatabase(itemSpriteDatabase);
         EnsureEventSystem();
         EnsureRuntimeView();
         EnsureComponents();
@@ -113,7 +128,7 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
-        stageManager.Initialize(ItemDatabase.LoadDefault());
+        stageManager.Initialize(ItemDatabase.LoadDefault(itemMasterCsv, itemSpriteDatabase));
         scoreManager.Reset();
         comboManager.Reset();
         gaugeManager.Reset();
@@ -337,6 +352,7 @@ public class GameManager : MonoBehaviour
         }
 
         isBombStunned = true;
+        buttonFastForward = false;
         keyboardFastForward = false;
         SetFastForward(false);
         EndSuctionHold();
@@ -400,6 +416,12 @@ public class GameManager : MonoBehaviour
         ApplyFastForwardToActiveItems();
     }
 
+    public void SetFastForwardButtonHeld(bool held)
+    {
+        buttonFastForward = held;
+        RefreshFastForwardState();
+    }
+
     public void SuppressPointerSuckInput(float seconds = 0.2f)
     {
         suppressPointerSuckUntilRealtime = Mathf.Max(suppressPointerSuckUntilRealtime, Time.realtimeSinceStartup + seconds);
@@ -437,7 +459,7 @@ public class GameManager : MonoBehaviour
         scaler.matchWidthOrHeight = 0.5f;
 
         var root = canvasObject.GetComponent<RectTransform>();
-        backgroundController = CreateBackgroundController(root, homeStageBackgroundSprite, streetStageBackgroundSprite);
+        backgroundController = CreateBackgroundController(root, homeStageBackgroundSprite, streetStageBackgroundSprite, cityStageBackgroundSprite, spaceStageBackgroundSprite);
         CreatePanel("Play_Lane", root, new Vector2(0f, 0f), new Vector2(1080f, 520f), new Color(1f, 0.84f, 0.42f, 0.32f), false);
 
         itemLayer = CreateRect("ItemLayer", root, Vector2.zero, new Vector2(1080f, 1920f));
@@ -454,25 +476,25 @@ public class GameManager : MonoBehaviour
         bombExplosionImage = CreateBombExplosionImage(root, bombExplosionSprite);
         scorePopupLayer = CreateRect("ScorePopupLayer", root, Vector2.zero, new Vector2(1080f, 1920f));
 
-        timeText = CreateText("TIME_Text", root, "TIME 90", new Vector2(-390f, 830f), new Vector2(260f, 70f), 42, Color.white, TextAnchor.MiddleLeft);
-        scoreText = CreateText("SCORE_Text", root, "SCORE 0", new Vector2(-390f, 760f), new Vector2(320f, 70f), 36, Color.white, TextAnchor.MiddleLeft);
-        comboText = CreateText("COMBO_Text", root, "COMBO 0", new Vector2(360f, 760f), new Vector2(300f, 70f), 36, Color.white, TextAnchor.MiddleRight);
-        var levelPanel = CreatePanel("SuctionLevel_Panel", root, new Vector2(-330f, -600f), new Vector2(190f, 390f), Color.white, false);
+        timeText = CreateReadableText("TIME_Text", root, "TIME 90", new Vector2(0f, 825f), new Vector2(360f, 92f), 62, new Color(1f, 0.94f, 0.22f), TextAnchor.MiddleCenter);
+        scoreText = CreateReadableText("SCORE_Text", root, "SCORE 0", new Vector2(0f, 742f), new Vector2(440f, 62f), 36, Color.white, TextAnchor.MiddleCenter);
+        comboText = CreateReadableText("COMBO_Text", root, "COMBO 0", new Vector2(0f, 682f), new Vector2(360f, 56f), 32, new Color(0.92f, 1f, 1f), TextAnchor.MiddleCenter);
+        var levelPanel = CreatePanel("SuctionLevel_Panel", root, new Vector2(395f, -600f), new Vector2(190f, 390f), Color.white, false);
         var levelPanelOutline = levelPanel.gameObject.AddComponent<Outline>();
         levelPanelOutline.effectColor = new Color(1f, 1f, 1f, 0.95f);
         levelPanelOutline.effectDistance = new Vector2(8f, -8f);
         levelPanelFill = CreatePanel("SuctionLevel_PanelFill", levelPanel.rectTransform, Vector2.zero, new Vector2(172f, 372f), LevelColorUtility.GetLevelColor(gaugeManager.SuctionLevel), false);
         levelText = CreateText("SuctionLevel_Label", levelPanel.rectTransform, "吸引Lv", new Vector2(0f, 135f), new Vector2(160f, 60f), 28, new Color(0.12f, 0.18f, 0.28f), TextAnchor.MiddleCenter);
         levelNumberText = CreateText("SuctionLevel_Number", levelPanel.rectTransform, "1", new Vector2(0f, -30f), new Vector2(180f, 260f), 150, new Color(0.10f, 0.16f, 0.28f), TextAnchor.MiddleCenter);
-        stageText = CreateText("Stage_Text", root, "家ステージ", new Vector2(0f, 720f), new Vector2(380f, 70f), 40, new Color(0.18f, 0.22f, 0.30f), TextAnchor.MiddleCenter);
-        resultText = CreateText("Result_Text", root, "クリックで吸引", new Vector2(0f, -570f), new Vector2(520f, 80f), 38, new Color(0.16f, 0.20f, 0.28f), TextAnchor.MiddleCenter);
+        stageText = CreateReadableText("Stage_Text", root, "家ステージ", new Vector2(375f, 835f), new Vector2(300f, 56f), 28, Color.white, TextAnchor.MiddleCenter);
+        resultText = CreateReadableText("Result_Text", root, "クリックで吸引", new Vector2(375f, 770f), new Vector2(300f, 56f), 26, new Color(0.92f, 1f, 1f), TextAnchor.MiddleCenter);
 
-        var gaugeBack = CreatePanel("Gauge_Back", root, new Vector2(-460f, -600f), new Vector2(70f, 390f), Color.white, false);
+        var gaugeBack = CreatePanel("Gauge_Back", root, new Vector2(265f, -600f), new Vector2(70f, 390f), Color.white, false);
         CreatePanel("Gauge_BackFill", gaugeBack.rectTransform, Vector2.zero, new Vector2(52f, 372f), new Color(0.10f, 0.20f, 0.30f, 0.35f), false);
         gaugeFill = CreatePanel("Gauge_Fill", gaugeBack.rectTransform, new Vector2(0f, -176f), new Vector2(42f, 0f), new Color(0.15f, 0.76f, 1f), false);
         gaugeFill.rectTransform.pivot = new Vector2(0.5f, 0f);
 
-        fastForwardButton = CreateButton("FastForward_Button", root, "早送り\n長押し", new Vector2(360f, -610f), new Vector2(300f, 130f), new Color(0.26f, 0.62f, 1f));
+        fastForwardButton = CreateButton("FastForward_Button", root, "早送り\n長押し", new Vector2(-360f, -610f), new Vector2(300f, 130f), new Color(0.26f, 0.62f, 1f));
         var fastButton = fastForwardButton.gameObject.AddComponent<FastForwardButton>();
         fastButton.Configure(this);
 
@@ -564,8 +586,9 @@ public class GameManager : MonoBehaviour
     {
         if (isBombStunned)
         {
-            if (keyboardFastForward || isFastForwardEnabled)
+            if (buttonFastForward || keyboardFastForward || isFastForwardEnabled)
             {
+                buttonFastForward = false;
                 keyboardFastForward = false;
                 SetFastForward(false);
             }
@@ -581,8 +604,13 @@ public class GameManager : MonoBehaviour
         if (fastHeld != keyboardFastForward)
         {
             keyboardFastForward = fastHeld;
-            SetFastForward(keyboardFastForward);
+            RefreshFastForwardState();
         }
+    }
+
+    private void RefreshFastForwardState()
+    {
+        SetFastForward(buttonFastForward || keyboardFastForward);
     }
 
     private void HandleHeldSuction()
@@ -661,6 +689,10 @@ public class GameManager : MonoBehaviour
         {
             backgroundController.PlayStreetStageZoomOut(() => zoomDone = true);
         }
+        else if (previousStage == PurifierStage.City && nextStage == PurifierStage.Space)
+        {
+            backgroundController.PlayCityStageZoomOut(() => zoomDone = true);
+        }
         else
         {
             zoomDone = true;
@@ -682,6 +714,14 @@ public class GameManager : MonoBehaviour
         if (nextStage == PurifierStage.Street)
         {
             backgroundController.SetStreetBackground();
+        }
+        else if (nextStage == PurifierStage.City)
+        {
+            backgroundController.SetCityBackground();
+        }
+        else if (nextStage == PurifierStage.Space)
+        {
+            backgroundController.SetSpaceBackground();
         }
         resultText.text = $"{stageManager.CurrentStageName}!";
         UpdateUi();
@@ -756,9 +796,9 @@ public class GameManager : MonoBehaviour
     private bool IsFastForwardHeld()
     {
 #if ENABLE_INPUT_SYSTEM
-        return Keyboard.current != null && Keyboard.current.fKey.isPressed;
+        return Keyboard.current != null && (Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed);
 #else
-        return Input.GetKey(KeyCode.F);
+        return Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
 #endif
     }
 
@@ -807,6 +847,18 @@ public class GameManager : MonoBehaviour
         if (stageManager.CurrentStage == PurifierStage.Home)
         {
             backgroundController.SetHomeBackground();
+            return;
+        }
+
+        if (stageManager.CurrentStage == PurifierStage.City)
+        {
+            backgroundController.SetCityBackground();
+            return;
+        }
+
+        if (stageManager.CurrentStage == PurifierStage.Space)
+        {
+            backgroundController.SetSpaceBackground();
             return;
         }
 
@@ -874,6 +926,27 @@ public class GameManager : MonoBehaviour
         return label;
     }
 
+    private static Text CreateReadableText(string name, RectTransform parent, string text, Vector2 anchoredPosition, Vector2 size, int fontSize, Color color, TextAnchor alignment)
+    {
+        var panel = CreatePanel(name + "_Panel", parent, anchoredPosition, size, new Color(0.04f, 0.08f, 0.16f, 0.62f), false);
+        var panelOutline = panel.gameObject.AddComponent<Outline>();
+        panelOutline.effectColor = new Color(1f, 1f, 1f, 0.88f);
+        panelOutline.effectDistance = new Vector2(5f, -5f);
+
+        var label = CreateText(name, panel.rectTransform, text, Vector2.zero, size, fontSize, color, alignment);
+        var outline = label.GetComponent<Outline>();
+        if (outline != null)
+        {
+            outline.effectColor = new Color(0f, 0f, 0f, 0.92f);
+            outline.effectDistance = new Vector2(4f, -4f);
+        }
+
+        var shadow = label.gameObject.AddComponent<Shadow>();
+        shadow.effectColor = new Color(0f, 0f, 0f, 0.55f);
+        shadow.effectDistance = new Vector2(5f, -5f);
+        return label;
+    }
+
     private static Button CreateButton(string name, RectTransform parent, string text, Vector2 anchoredPosition, Vector2 size, Color color)
     {
         var image = CreatePanel(name, parent, anchoredPosition, size, Color.white, true);
@@ -924,16 +997,18 @@ public class GameManager : MonoBehaviour
         return CreatePanel(name, parent, anchoredPosition, size, new Color(1f, 0.16f, 0.16f, 0.72f), false);
     }
 
-    private static BackgroundController CreateBackgroundController(RectTransform parent, Sprite homeSprite, Sprite streetSprite)
+    private static BackgroundController CreateBackgroundController(RectTransform parent, Sprite homeSprite, Sprite streetSprite, Sprite citySprite, Sprite spaceSprite)
     {
         var root = CreateRect("BackgroundRoot", parent, Vector2.zero, new Vector2(1080f, 1920f));
         root.SetAsFirstSibling();
 
         var home = CreatePanel("HomeBackground", root, Vector2.zero, new Vector2(1080f, 1920f), new Color(1f, 0.92f, 0.74f), false);
         var street = CreatePanel("StreetBackground", root, Vector2.zero, new Vector2(1080f, 1920f), new Color(0.70f, 0.88f, 1f), false);
+        var city = CreatePanel("CityBackground", root, Vector2.zero, new Vector2(1080f, 1920f), new Color(0.55f, 0.70f, 0.92f), false);
+        var space = CreatePanel("SpaceBackground", root, Vector2.zero, new Vector2(1080f, 1920f), new Color(0.10f, 0.08f, 0.22f), false);
 
         var controller = root.gameObject.AddComponent<BackgroundController>();
-        controller.Configure(home, street, homeSprite, streetSprite);
+        controller.Configure(home, street, city, space, homeSprite, streetSprite, citySprite, spaceSprite);
         return controller;
     }
 
