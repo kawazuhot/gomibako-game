@@ -32,6 +32,12 @@ public class ItemSpawner : MonoBehaviour
         bottomLaneSpawnTimer = 0.55f;
     }
 
+    public void BeginCountdownSpawn()
+    {
+        topLaneSpawnTimer = 0f;
+        bottomLaneSpawnTimer = 0.35f;
+    }
+
     public void Tick(float deltaTime)
     {
         if (gameManager == null || itemLayer == null || itemTemplate == null || gameManager.IsTimeUp)
@@ -81,7 +87,7 @@ public class ItemSpawner : MonoBehaviour
     private float GetNextSpawnInterval()
     {
         var range = normalSpawnIntervalRange;
-        var stageMultiplier = GameManager.GetStageSpeedMultiplier(gameManager.CurrentStage);
+        var stageMultiplier = GameManager.GetStageSpawnIntervalMultiplier(gameManager.CurrentStage);
         var fastMultiplier = gameManager.IsFastForwardActive ? fastForwardSpawnMultiplier : 1f;
         var interval = Random.Range(range.x, range.y) / stageMultiplier / fastMultiplier;
         return Mathf.Max(minAllowedSpawnInterval, interval);

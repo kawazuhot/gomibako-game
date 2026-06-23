@@ -10,6 +10,14 @@ using UnityEngine.InputSystem;
 
 public class GameManager : MonoBehaviour
 {
+    public enum GameState
+    {
+        WaitingToStart,
+        Countdown,
+        Playing,
+        GameOver
+    }
+
     private const float InitialTime = 90f;
     private const float PenaltySeconds = 5f;
     private const float NormalTimeScale = 1f;
@@ -34,6 +42,9 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Text stageText;
     [SerializeField] private Text resultText;
     [SerializeField] private Image gaugeFill;
+    [SerializeField] private Image startOverlayDimPanel;
+    [SerializeField] private Text startPromptText;
+    [SerializeField] private Text countdownText;
     [SerializeField] private TargetMarkerController targetMarkerController;
     [SerializeField] private Button fastForwardButton;
     [SerializeField] private AirPurifierController airPurifier;
@@ -71,16 +82,24 @@ public class GameManager : MonoBehaviour
     private bool isFastForwardEnabled;
     private bool isBombStunned;
     private bool lastHadTargetInRange;
+    private GameState currentState = GameState.WaitingToStart;
     private int lastDisplayedSuctionLevel = -1;
     private float suppressPointerSuckUntilRealtime;
 
     public int CurrentSuctionLevel => gaugeManager.SuctionLevel;
     public PurifierStage CurrentStage => stageManager.CurrentStage;
     public bool IsFastForwardActive => isFastForwardEnabled;
-    public bool IsTargetControlLocked => isStageTransitioning || IsTimeUp;
-    public bool IsSuctionLocked => isStageTransitioning || isBombStunned || IsTimeUp;
+    public bool IsWaitingToStart => currentState == GameState.WaitingToStart;
+    public bool IsCountdown => currentState == GameState.Countdown;
+    public bool IsPlaying => currentState == GameState.Playing;
+    public bool CanSpawnItems => currentState == GameState.Countdown || currentState == GameState.Playing;
+    public bool CanTickTimer => currentState == GameState.Playing;
+    public bool CanSuction => currentState == GameState.Playing;
+    public bool CanFastForward => currentState == GameState.Playing;
+    public bool IsTargetControlLocked => isStageTransitioning || IsTimeUp || !IsPlaying;
+    public bool IsSuctionLocked => isStageTransitioning || isBombStunned || IsTimeUp || !CanSuction;
     public bool IsTimeUp => timerManager.IsFinished;
-    private float GameplaySpeedMultiplier => GetStageSpeedMultiplier(stageManager.CurrentStage) * (isFastForwardEnabled ? FastForwardTimeScale : NormalTimeScale);
+    private float GameplaySpeedMultiplier => GetStageMoveSpeedMultiplier(stageManager.CurrentStage) * (isFastForwardEnabled ? FastForwardTimeScale : NormalTimeScale);
 
     public void ConfigureAirPurifierSprites(Sprite normal, Sprite suction, Sprite fail)
     {
@@ -140,6 +159,8 @@ public class GameManager : MonoBehaviour
         timerManager.Reset(InitialTime);
         stageManager.ApplyLevel(gaugeManager.SuctionLevel);
         ApplyStageVisuals(false);
+        currentState = GameState.WaitingToStart;
+        ShowStartPrompt();
         UpdateUi();
     }
 
@@ -159,17 +180,41 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        timerManager.Tick(Time.unscaledDeltaTime);
+        if (IsWaitingToStart)
+        {
+            HandleStartPromptInput();
+            UpdateUi();
+            return;
+        }
+
+        if (CanTickTimer)
+        {
+            timerManager.Tick(Time.unscaledDeltaTime);
+        }
+
         if (IsTimeUp && isSuctionHeld)
         {
             EndSuctionHold();
         }
 
-        itemSpawner.Tick(Time.deltaTime);
+        if (CanSpawnItems)
+        {
+            itemSpawner.Tick(Time.deltaTime);
+        }
+
         UpdateCandidateHighlight();
-        HandleHeldSuction();
-        HandleInput();
+        if (IsPlaying)
+        {
+            HandleHeldSuction();
+            HandleInput();
+        }
         UpdateUi();
+
+        if (IsTimeUp && currentState == GameState.Playing)
+        {
+            currentState = GameState.GameOver;
+            SetFastForward(false);
+        }
     }
 
     public IReadOnlyList<ItemData> GetCurrentSpawnPool()
@@ -186,7 +231,12 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    public static float GetStageSpeedMultiplier(PurifierStage stage)
+    public static float GetStageMoveSpeedMultiplier(PurifierStage stage)
+    {
+        return GetStageSpawnIntervalMultiplier(stage) * 1.3f;
+    }
+
+    public static float GetStageSpawnIntervalMultiplier(PurifierStage stage)
     {
         switch (stage)
         {
@@ -423,7 +473,7 @@ public class GameManager : MonoBehaviour
 
     public void SetFastForward(bool enabled)
     {
-        if ((isStageTransitioning || isBombStunned) && enabled)
+        if ((isStageTransitioning || isBombStunned || !CanFastForward) && enabled)
         {
             return;
         }
@@ -434,13 +484,110 @@ public class GameManager : MonoBehaviour
 
     public void SetFastForwardButtonHeld(bool held)
     {
-        buttonFastForward = held;
+        buttonFastForward = held && CanFastForward;
         RefreshFastForwardState();
     }
 
     public void SuppressPointerSuckInput(float seconds = 0.2f)
     {
         suppressPointerSuckUntilRealtime = Mathf.Max(suppressPointerSuckUntilRealtime, Time.realtimeSinceStartup + seconds);
+    }
+
+    private void ShowStartPrompt()
+    {
+        if (startOverlayDimPanel != null)
+        {
+            startOverlayDimPanel.gameObject.SetActive(true);
+            startOverlayDimPanel.color = new Color(0f, 0f, 0f, 0.45f);
+        }
+
+        if (startPromptText != null)
+        {
+            startPromptText.gameObject.SetActive(true);
+            startPromptText.text = "TAPで清浄スタート！";
+            startPromptText.rectTransform.DOKill();
+            startPromptText.rectTransform.localScale = Vector3.one;
+            startPromptText.rectTransform.DOScale(1.06f, 0.65f)
+                .SetEase(Ease.InOutSine)
+                .SetLoops(-1, LoopType.Yoyo);
+        }
+
+        if (countdownText != null)
+        {
+            countdownText.gameObject.SetActive(false);
+        }
+    }
+
+    private void HandleStartPromptInput()
+    {
+        if (WasStartPressed())
+        {
+            StartCoroutine(PlayStartCountdown());
+        }
+    }
+
+    private IEnumerator PlayStartCountdown()
+    {
+        if (currentState != GameState.WaitingToStart)
+        {
+            yield break;
+        }
+
+        currentState = GameState.Countdown;
+        buttonFastForward = false;
+        keyboardFastForward = false;
+        SetFastForward(false);
+        EndSuctionHold();
+        itemSpawner?.BeginCountdownSpawn();
+
+        if (startPromptText != null)
+        {
+            startPromptText.rectTransform.DOKill();
+            startPromptText.gameObject.SetActive(false);
+        }
+
+        if (countdownText != null)
+        {
+            countdownText.gameObject.SetActive(true);
+            yield return PlayCountdownText("3", 1.0f);
+            yield return PlayCountdownText("2", 1.0f);
+            yield return PlayCountdownText("1", 1.0f);
+            yield return PlayCountdownText("清浄スタート！", 0.7f);
+            countdownText.gameObject.SetActive(false);
+        }
+        else
+        {
+            yield return new WaitForSecondsRealtime(2.5f);
+        }
+
+        if (startOverlayDimPanel != null)
+        {
+            startOverlayDimPanel.gameObject.SetActive(false);
+        }
+
+        currentState = GameState.Playing;
+        resultText.text = "清浄スタート！";
+        UpdateUi();
+    }
+
+    private IEnumerator PlayCountdownText(string text, float duration)
+    {
+        countdownText.text = text;
+        countdownText.DOKill();
+        countdownText.rectTransform.DOKill();
+        countdownText.rectTransform.localScale = Vector3.one * 0.6f;
+
+        var color = countdownText.color;
+        color.a = 1f;
+        countdownText.color = color;
+
+        countdownText.rectTransform.DOScale(1.22f, 0.16f).SetEase(Ease.OutBack)
+            .OnComplete(() => countdownText.rectTransform.DOScale(1f, 0.12f).SetEase(Ease.OutQuad));
+        countdownText.DOFade(0f, Mathf.Min(0.22f, duration * 0.45f))
+            .SetDelay(Mathf.Max(0f, duration - 0.22f))
+            .SetEase(Ease.InQuad);
+
+        yield return new WaitForSecondsRealtime(duration);
     }
 
     private void EnsureComponents()
@@ -525,6 +672,7 @@ public class GameManager : MonoBehaviour
         var fastButton = fastForwardButton.gameObject.AddComponent<FastForwardButton>();
         fastButton.Configure(this);
 
+        CreateStartOverlay(root);
         fadeController = CreateFadeController(root);
     }
 
@@ -788,6 +936,32 @@ public class GameManager : MonoBehaviour
 #endif
     }
 
+    private bool WasStartPressed()
+    {
+#if ENABLE_INPUT_SYSTEM
+        if (Keyboard.current != null &&
+            (Keyboard.current.enterKey.wasPressedThisFrame ||
+             Keyboard.current.numpadEnterKey.wasPressedThisFrame ||
+             Keyboard.current.spaceKey.wasPressedThisFrame))
+        {
+            return true;
+        }
+
+        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            return true;
+        }
+
+        return Touchscreen.current != null && Touchscreen.current.primaryTouch.press.wasPressedThisFrame;
+#else
+        return Input.GetKeyDown(KeyCode.Return) ||
+               Input.GetKeyDown(KeyCode.KeypadEnter) ||
+               Input.GetKeyDown(KeyCode.Space) ||
+               Input.GetMouseButtonDown(0) ||
+               Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Began;
+#endif
+    }
+
     private bool ShouldIgnorePointerSuckInput()
     {
         if (Time.realtimeSinceStartup < suppressPointerSuckUntilRealtime)
@@ -1031,6 +1205,30 @@ public class GameManager : MonoBehaviour
         var controller = overlay.gameObject.AddComponent<FadeController>();
         controller.Configure(overlay);
         return controller;
+    }
+
+    private void CreateStartOverlay(RectTransform parent)
+    {
+        startOverlayDimPanel = CreatePanel("StartOverlayDimPanel", parent, Vector2.zero, new Vector2(1080f, 1920f), new Color(0f, 0f, 0f, 0.45f), true);
+        StretchToParent(startOverlayDimPanel.rectTransform);
+
+        startPromptText = CreateText("StartPromptText", parent, "TAPで清浄スタート！", Vector2.zero, new Vector2(930f, 180f), 76, new Color(1f, 0.94f, 0.22f), TextAnchor.MiddleCenter);
+        var promptOutline = startPromptText.GetComponent<Outline>();
+        if (promptOutline != null)
+        {
+            promptOutline.effectColor = new Color(0.04f, 0.10f, 0.22f, 0.98f);
+            promptOutline.effectDistance = new Vector2(7f, -7f);
+        }
+
+        countdownText = CreateText("CountdownText", parent, "3", Vector2.zero, new Vector2(900f, 220f), 118, new Color(1f, 0.96f, 0.24f), TextAnchor.MiddleCenter);
+        var countdownOutline = countdownText.GetComponent<Outline>();
+        if (countdownOutline != null)
+        {
+            countdownOutline.effectColor = new Color(0.04f, 0.10f, 0.22f, 0.98f);
+            countdownOutline.effectDistance = new Vector2(8f, -8f);
+        }
+
+        countdownText.gameObject.SetActive(false);
     }
 
     private static Image CreateBombExplosionImage(RectTransform parent, Sprite sprite)
