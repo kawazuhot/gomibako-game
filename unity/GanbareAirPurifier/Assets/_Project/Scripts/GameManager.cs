@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -47,6 +48,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Text countdownText;
     [SerializeField] private TargetMarkerController targetMarkerController;
     [SerializeField] private Button fastForwardButton;
+    [SerializeField] private Button gameplayRestartButton;
     [SerializeField] private AirPurifierController airPurifier;
     [SerializeField] private Sprite airPurifierNormalSprite;
     [SerializeField] private Sprite airPurifierSuctionSprite;
@@ -60,10 +62,12 @@ public class GameManager : MonoBehaviour
     [SerializeField] private TextAsset itemMasterCsv;
     [SerializeField] private ItemSpriteDatabase itemSpriteDatabase;
     [SerializeField] private SfxDatabase sfxDatabase;
+    [SerializeField] private AudioClip gameplayBgmClip;
     [SerializeField] private ItemController itemTemplate;
     [SerializeField] private ItemSpawner itemSpawner;
     [SerializeField] private SuctionManager suctionManager;
     [SerializeField] private AudioManager audioManager;
+    [SerializeField] private ResultController resultController;
 
     [Header("Suction Zone")]
     [SerializeField] private float suctionZoneRadius = 150f;
@@ -88,8 +92,15 @@ public class GameManager : MonoBehaviour
     private bool isFastForwardEnabled;
     private bool isBombStunned;
     private bool lastHadTargetInRange;
+    private bool resultStarted;
+    private bool isGameplayRestarting;
     private GameState currentState = GameState.WaitingToStart;
     private int lastDisplayedSuctionLevel = -1;
+    private int maxCombo;
+    private int mistakeCount;
+    private int bombHitCount;
+    private int reachedLevel = 1;
+    private PurifierStage reachedStage = PurifierStage.Home;
     private float suppressPointerSuckUntilRealtime;
 
     public int CurrentSuctionLevel => gaugeManager.SuctionLevel;
@@ -135,6 +146,11 @@ public class GameManager : MonoBehaviour
         ItemDatabase.SetSpriteDatabase(itemSpriteDatabase);
     }
 
+    public void ConfigureBgmAsset(AudioClip gameplayBgm)
+    {
+        gameplayBgmClip = gameplayBgm;
+    }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
     {
@@ -170,6 +186,12 @@ public class GameManager : MonoBehaviour
         timerManager.Reset(InitialTime);
         stageManager.ApplyLevel(gaugeManager.SuctionLevel);
         ApplyStageVisuals(false);
+        maxCombo = 0;
+        mistakeCount = 0;
+        bombHitCount = 0;
+        reachedLevel = gaugeManager.SuctionLevel;
+        reachedStage = stageManager.CurrentStage;
+        resultStarted = false;
         currentState = GameState.WaitingToStart;
         ShowStartPrompt();
         UpdateUi();
@@ -201,6 +223,12 @@ public class GameManager : MonoBehaviour
         if (CanTickTimer)
         {
             timerManager.Tick(Time.unscaledDeltaTime);
+            if (IsTimeUp && currentState == GameState.Playing)
+            {
+                BeginGameOver();
+                UpdateUi();
+                return;
+            }
         }
 
         if (IsTimeUp && isSuctionHeld)
@@ -223,8 +251,7 @@ public class GameManager : MonoBehaviour
 
         if (IsTimeUp && currentState == GameState.Playing)
         {
-            currentState = GameState.GameOver;
-            SetFastForward(false);
+            BeginGameOver();
         }
     }
 
@@ -327,8 +354,12 @@ public class GameManager : MonoBehaviour
         {
             suctionZoneVisual?.SetFailFlash();
             comboManager.Reset();
-            timerManager.ApplyPenalty(PenaltySeconds);
-            resultText.text = $"MISS -{PenaltySeconds:0}s";
+            mistakeCount += 1;
+            if (currentState != GameState.GameOver)
+            {
+                timerManager.ApplyPenalty(PenaltySeconds);
+                resultText.text = $"MISS -{PenaltySeconds:0}s";
+            }
         }
 
         if (item != null)
@@ -343,18 +374,21 @@ public class GameManager : MonoBehaviour
 
     public void ApplySuccessReward(ItemController item)
     {
-        if (item == null || item.Data == null || item.Data.IsBomb || !item.TryMarkRewardApplied())
+        if (currentState == GameState.GameOver || item == null || item.Data == null || item.Data.IsBomb || !item.TryMarkRewardApplied())
         {
             return;
         }
 
         var combo = comboManager.AddCombo();
+        maxCombo = Mathf.Max(maxCombo, combo);
         var gainedScore = scoreManager.AddSuccessScore(item.Data.Score, combo);
         audioManager?.PlaySuccessSfx(item.Data.SuccessSfxKey);
         ShowScorePopup(gainedScore, combo, ScoreManager.GetComboMultiplier(combo), item.RectTransform.anchoredPosition);
         var previousLevel = gaugeManager.SuctionLevel;
         var previousStage = stageManager.CurrentStage;
         var leveledUp = gaugeManager.AddGauge(item.Data.GaugeGain);
+        reachedLevel = Mathf.Max(reachedLevel, gaugeManager.SuctionLevel);
+        reachedStage = StageManager.GetStageForLevel(reachedLevel);
         if (leveledUp)
         {
             var nextStage = StageManager.GetStageForLevel(gaugeManager.SuctionLevel);
@@ -399,6 +433,7 @@ public class GameManager : MonoBehaviour
     {
         activeItems.Remove(item);
         comboManager.Reset();
+        bombHitCount += 1;
         resultText.text = "BOMB!";
 
         if (item != null)
@@ -563,21 +598,37 @@ public class GameManager : MonoBehaviour
             yield return PlayCountdownText("3", 1.0f);
             yield return PlayCountdownText("2", 1.0f);
             yield return PlayCountdownText("1", 1.0f);
+
+            currentState = GameState.Playing;
+            resultText.text = "清浄スタート！";
+            audioManager?.PlayGameplayBgm();
+            UpdateUi();
+            if (startOverlayDimPanel != null)
+            {
+                startOverlayDimPanel.DOKill();
+                startOverlayDimPanel.DOFade(0f, 0.2f)
+                    .SetEase(Ease.OutQuad)
+                    .SetUpdate(true)
+                    .OnComplete(() => startOverlayDimPanel.gameObject.SetActive(false));
+            }
+
             yield return PlayCountdownText("清浄スタート！", 0.7f);
             countdownText.gameObject.SetActive(false);
         }
         else
         {
             yield return new WaitForSecondsRealtime(2.5f);
+            currentState = GameState.Playing;
+            resultText.text = "清浄スタート！";
+            audioManager?.PlayGameplayBgm();
+            UpdateUi();
         }
 
-        if (startOverlayDimPanel != null)
+        if (startOverlayDimPanel != null && currentState != GameState.Playing)
         {
             startOverlayDimPanel.gameObject.SetActive(false);
         }
 
-        currentState = GameState.Playing;
-        resultText.text = "清浄スタート！";
         UpdateUi();
     }
 
@@ -618,14 +669,24 @@ public class GameManager : MonoBehaviour
             audioManager = GetComponent<AudioManager>();
         }
 
+        if (resultController == null)
+        {
+            resultController = GetComponent<ResultController>();
+        }
+
         if (audioManager == null)
         {
             audioManager = gameObject.AddComponent<AudioManager>();
         }
 
+        if (resultController == null)
+        {
+            resultController = gameObject.AddComponent<ResultController>();
+        }
+
         itemSpawner.Configure(this, itemLayer, itemTemplate);
         suctionManager.Configure(this, airPurifier);
-        audioManager.Configure(sfxDatabase);
+        audioManager.Configure(sfxDatabase, gameplayBgmClip);
     }
 
     private void EnsureRuntimeView()
@@ -683,9 +744,12 @@ public class GameManager : MonoBehaviour
         fastForwardButton = CreateButton("FastForward_Button", root, "x2\n早送り", new Vector2(-260f, -650f), new Vector2(360f, 160f), new Color(0.26f, 0.62f, 1f));
         var fastButton = fastForwardButton.gameObject.AddComponent<FastForwardButton>();
         fastButton.Configure(this);
+        gameplayRestartButton = CreateButton("GameplayRestartButton", root, "再", new Vector2(486f, 625f), new Vector2(88f, 88f), new Color(1f, 0.58f, 0.18f));
+        gameplayRestartButton.onClick.AddListener(RestartGameplayScene);
 
         CreateStartOverlay(root);
         fadeController = CreateFadeController(root);
+        resultController = CreateResultController(root);
     }
 
     private void EnsureEventSystem()
@@ -898,6 +962,53 @@ public class GameManager : MonoBehaviour
 
         isStageTransitioning = false;
         resultText.text = $"{stageManager.CurrentStageName}!";
+    }
+
+    private void BeginGameOver()
+    {
+        if (resultStarted)
+        {
+            return;
+        }
+
+        resultStarted = true;
+        currentState = GameState.GameOver;
+        if (gameplayRestartButton != null)
+        {
+            gameplayRestartButton.gameObject.SetActive(false);
+        }
+        buttonFastForward = false;
+        keyboardFastForward = false;
+        SetFastForward(false);
+        EndSuctionHold();
+        resultText.text = "TIME UP";
+        audioManager?.FadeOutGameplayBgm();
+        suctionZoneVisual?.SetIdle();
+        highlightedItem = null;
+        lastHadTargetInRange = false;
+
+        if (resultController != null)
+        {
+            resultController.ShowResult(scoreManager.Score, reachedLevel, reachedStage, maxCombo, mistakeCount, bombHitCount);
+        }
+    }
+
+    private void RestartGameplayScene()
+    {
+        if (isGameplayRestarting)
+        {
+            return;
+        }
+
+        isGameplayRestarting = true;
+        if (gameplayRestartButton != null)
+        {
+            gameplayRestartButton.interactable = false;
+        }
+
+        Time.timeScale = 1f;
+        audioManager?.StopGameplayBgm();
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     private IEnumerator PlayBombPenalty()
@@ -1216,6 +1327,17 @@ public class GameManager : MonoBehaviour
         overlay.rectTransform.SetAsLastSibling();
         var controller = overlay.gameObject.AddComponent<FadeController>();
         controller.Configure(overlay);
+        return controller;
+    }
+
+    private static ResultController CreateResultController(RectTransform parent)
+    {
+        var root = CreateRect("ResultRoot", parent, Vector2.zero, new Vector2(1080f, 1920f));
+        StretchToParent(root);
+        root.SetAsLastSibling();
+        var controller = root.gameObject.AddComponent<ResultController>();
+        controller.Configure(root, GetBuiltinFont());
+        root.gameObject.SetActive(false);
         return controller;
     }
 

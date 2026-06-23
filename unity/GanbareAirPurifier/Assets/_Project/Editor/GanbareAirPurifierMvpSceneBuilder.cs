@@ -22,6 +22,7 @@ public static class GanbareAirPurifierMvpSceneBuilder
     private const string ItemMasterCsvPath = "Assets/_Project/Data/CSV/ItemMaster.csv";
     private const string ItemSpriteDatabasePath = "Assets/_Project/Data/ItemSpriteDatabase.asset";
     private const string SfxDatabasePath = "Assets/_Project/Data/SfxDatabase.asset";
+    private const string GameplayBgmPath = "Assets/_Project/Audio/BGM/BGM_Gameplay_Main.mp3";
 
     [MenuItem("GanbareAirPurifier/Rebuild MVP Scene")]
     public static void RebuildMvpScene()
@@ -61,6 +62,7 @@ public static class GanbareAirPurifierMvpSceneBuilder
             AssetDatabase.LoadAssetAtPath<TextAsset>(ItemMasterCsvPath),
             AssetDatabase.LoadAssetAtPath<ItemSpriteDatabase>(ItemSpriteDatabasePath),
             AssetDatabase.LoadAssetAtPath<SfxDatabase>(SfxDatabasePath));
+        gameManager.ConfigureBgmAsset(AssetDatabase.LoadAssetAtPath<AudioClip>(GameplayBgmPath));
 
         EditorSceneManager.SaveScene(scene, ScenePath);
         Debug.Log($"Rebuilt GanbareAirPurifier MVP scene: {ScenePath}");
