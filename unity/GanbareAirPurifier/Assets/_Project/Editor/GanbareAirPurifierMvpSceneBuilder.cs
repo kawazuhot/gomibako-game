@@ -162,7 +162,7 @@ public static class GanbareAirPurifierMvpSceneBuilder
         var rect = CreateRect(name, parent, anchoredPosition, size);
         var label = rect.gameObject.AddComponent<Text>();
         label.text = text;
-        label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        label.font = UiFontUtility.GetDefaultFont();
         label.fontSize = fontSize;
         label.fontStyle = FontStyle.Bold;
         label.alignment = alignment;

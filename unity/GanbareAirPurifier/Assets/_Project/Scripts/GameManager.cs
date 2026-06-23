@@ -124,6 +124,7 @@ public class GameManager : MonoBehaviour
         EnsureEventSystem();
         EnsureRuntimeView();
         EnsureFullscreenRuntimeOverlays();
+        ApplyDefaultFontToCanvas();
         EnsureComponents();
     }
 
@@ -1083,12 +1084,7 @@ public class GameManager : MonoBehaviour
 
     private static Font GetBuiltinFont()
     {
-        var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        if (font == null)
-        {
-            font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-        }
-        return font;
+        return UiFontUtility.GetDefaultFont();
     }
 
     private void EnsureFullscreenRuntimeOverlays()
@@ -1096,6 +1092,26 @@ public class GameManager : MonoBehaviour
         StretchNamedRect("FadeOverlay");
         SetNamedImageAlpha("Play_Lane", 0f);
         SetNamedImageAlpha("TargetMarker_InputArea", 0f);
+    }
+
+    private void ApplyDefaultFontToCanvas()
+    {
+        if (canvas == null)
+        {
+            return;
+        }
+
+        var font = UiFontUtility.GetDefaultFont();
+        if (font == null)
+        {
+            return;
+        }
+
+        var texts = canvas.GetComponentsInChildren<Text>(true);
+        foreach (var text in texts)
+        {
+            text.font = font;
+        }
     }
 
     private void StretchNamedRect(string objectName)

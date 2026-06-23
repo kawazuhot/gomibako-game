@@ -31,6 +31,7 @@ public class TitleSceneController : MonoBehaviour
     private void Awake()
     {
         Time.timeScale = 1f;
+        ApplyDefaultFont();
 
         if (fadePanel != null)
         {
@@ -111,6 +112,21 @@ public class TitleSceneController : MonoBehaviour
         rectTransform.sizeDelta = Vector2.zero;
         rectTransform.offsetMin = Vector2.zero;
         rectTransform.offsetMax = Vector2.zero;
+    }
+
+    private void ApplyDefaultFont()
+    {
+        var font = UiFontUtility.GetDefaultFont();
+        if (font == null)
+        {
+            return;
+        }
+
+        var texts = FindObjectsByType<Text>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (var text in texts)
+        {
+            text.font = font;
+        }
     }
 
     private static bool WasStartPressed()
