@@ -126,7 +126,8 @@ public class ItemDatabase
                 score,
                 gaugeGain,
                 spawnWeight,
-                columns[8]);
+                columns[8],
+                columns.Length > 9 ? columns[9] : string.Empty);
 
             data.Sprite = LoadSpriteOrNull(data.SpriteName);
             data.SuctionSprite = LoadOptionalSpriteOrNull($"{data.SpriteName}_Surprised");

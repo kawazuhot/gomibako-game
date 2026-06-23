@@ -1,0 +1,57 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 274e56fa0d9d4e5cad2148f064d8a18e, type: 3}
+  m_Name: SfxDatabase
+  m_EditorClassIdentifier: Assembly-CSharp::SfxDatabase
+  entries:
+  - key: BigKick
+    clip: {fileID: 8300000, guid: 3b6d9527304b94f0f8e181715b19aa64, type: 3}
+  - key: BigPunch
+    clip: {fileID: 8300000, guid: 515ede89b959648579e8270ee55731db, type: 3}
+  - key: BottleHit
+    clip: {fileID: 8300000, guid: 860aacc1c76414b78b77a78b8823f96b, type: 3}
+  - key: Cancel4
+    clip: {fileID: 8300000, guid: ddf799242346d4afebaa17b8be156321, type: 3}
+  - key: CatMeow2
+    clip: {fileID: 8300000, guid: 70e63d6cdcf1b4b4d996a0370d9675b0, type: 3}
+  - key: ClothRubPunch
+    clip: {fileID: 8300000, guid: 05f284f40cfdb4d438f946ef900afc37, type: 3}
+  - key: DecisionButton52
+    clip: {fileID: 8300000, guid: d6aad345ce5cd4d35b6460ec02e8ebe8, type: 3}
+  - key: DogBark1
+    clip: {fileID: 8300000, guid: 491c863b01b334d7e96319461f681679, type: 3}
+  - key: DrunkTou
+    clip: {fileID: 8300000, guid: c3e40b4d2d4da4e21b458cb4440f73dc, type: 3}
+  - key: GirlKya
+    clip: {fileID: 8300000, guid: 455bb5542242748068001f3219e2b2ce, type: 3}
+  - key: Hit1
+    clip: {fileID: 8300000, guid: 5274b646952774ee49041977854559d4, type: 3}
+  - key: Hit2
+    clip: {fileID: 8300000, guid: c41cceac79d844a9f9d580c44b8eb8b3, type: 3}
+  - key: HitRobot
+    clip: {fileID: 8300000, guid: f16bead5785964872aefcaf307b8c2dc, type: 3}
+  - key: HitRobotHard2
+    clip: {fileID: 8300000, guid: a6873220a16034da3b62496c135d27d6, type: 3}
+  - key: LightKick
+    clip: {fileID: 8300000, guid: 9d600ba7d9d3f4264838aaff59fd5b7e, type: 3}
+  - key: LightKick1
+    clip: {fileID: 8300000, guid: 9d600ba7d9d3f4264838aaff59fd5b7e, type: 3}
+  - key: OpenMenu2
+    clip: {fileID: 8300000, guid: c118bb25281764a92aa662d8aca201e1, type: 3}
+  - key: PunchSwingLv3
+    clip: {fileID: 8300000, guid: af2243e6b419e447cb239d3f1e0adb41, type: 3}
+  - key: SpecialHit
+    clip: {fileID: 8300000, guid: 916083118de3b469fb0e55cb6872cfb2, type: 3}
+  - key: StudentGu
+    clip: {fileID: 8300000, guid: 2653c16705ea64a439c214d938cdd0ca, type: 3}
+  - key: Wrong
+    clip: {fileID: 8300000, guid: 01a6665d1499c477dbcb966ff890ed1a, type: 3}

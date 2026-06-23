@@ -35,6 +35,7 @@ public class ItemData
     public float GaugeGain;
     public int SpawnWeight;
     public string SpriteName;
+    public string SuccessSfxKey;
     public Sprite Sprite;
     public Sprite SuctionSprite;
     public float BaseScale;
@@ -42,7 +43,7 @@ public class ItemData
     public ItemType ItemType;
     public bool IsBomb => ItemType == ItemType.Bomb;
 
-    public ItemData(string id, PurifierStage stage, string displayName, int requiredLevel, SizeCategory sizeCategory, int score, float gaugeGain, int spawnWeight, string spriteName)
+    public ItemData(string id, PurifierStage stage, string displayName, int requiredLevel, SizeCategory sizeCategory, int score, float gaugeGain, int spawnWeight, string spriteName, string successSfxKey = "")
     {
         Id = id;
         Stage = stage;
@@ -53,6 +54,7 @@ public class ItemData
         GaugeGain = gaugeGain;
         SpawnWeight = Mathf.Max(0, spawnWeight);
         SpriteName = spriteName;
+        SuccessSfxKey = successSfxKey;
         BaseScale = (stage == PurifierStage.Home ? GetHomeScale(requiredLevel) : GetScale(sizeCategory)) * GetStageScaleMultiplier(stage) * GetItemScaleMultiplier(id);
         Color = GetPlaceholderColor(stage, requiredLevel);
         ItemType = ItemType.Normal;

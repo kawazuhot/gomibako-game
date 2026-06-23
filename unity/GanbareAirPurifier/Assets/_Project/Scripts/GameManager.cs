@@ -47,9 +47,11 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Sprite bombExplosionSprite;
     [SerializeField] private TextAsset itemMasterCsv;
     [SerializeField] private ItemSpriteDatabase itemSpriteDatabase;
+    [SerializeField] private SfxDatabase sfxDatabase;
     [SerializeField] private ItemController itemTemplate;
     [SerializeField] private ItemSpawner itemSpawner;
     [SerializeField] private SuctionManager suctionManager;
+    [SerializeField] private AudioManager audioManager;
 
     [Header("Suction Zone")]
     [SerializeField] private float suctionZoneRadius = 150f;
@@ -95,10 +97,11 @@ public class GameManager : MonoBehaviour
         spaceStageBackgroundSprite = spaceBackground;
     }
 
-    public void ConfigureDataAssets(TextAsset itemMaster, ItemSpriteDatabase spriteDatabase)
+    public void ConfigureDataAssets(TextAsset itemMaster, ItemSpriteDatabase spriteDatabase, SfxDatabase sfxDatabaseAsset = null)
     {
         itemMasterCsv = itemMaster;
         itemSpriteDatabase = spriteDatabase;
+        sfxDatabase = sfxDatabaseAsset;
         ItemDatabase.SetSpriteDatabase(itemSpriteDatabase);
     }
 
@@ -286,6 +289,7 @@ public class GameManager : MonoBehaviour
 
         var combo = comboManager.AddCombo();
         var gainedScore = scoreManager.AddSuccessScore(item.Data.Score, combo);
+        audioManager?.PlaySuccessSfx(item.Data.SuccessSfxKey);
         ShowScorePopup(gainedScore, combo, ScoreManager.GetComboMultiplier(combo), item.RectTransform.anchoredPosition);
         var previousLevel = gaugeManager.SuctionLevel;
         var previousStage = stageManager.CurrentStage;
@@ -344,6 +348,16 @@ public class GameManager : MonoBehaviour
 
         StartCoroutine(PlayBombPenalty());
         UpdateUi();
+    }
+
+    public void PlayWrongSfx()
+    {
+        audioManager?.PlayWrongSfx();
+    }
+
+    public void PlayBombSfx()
+    {
+        audioManager?.PlayBombSfx();
     }
 
     public void BeginBombLock()
@@ -441,8 +455,19 @@ public class GameManager : MonoBehaviour
             suctionManager = gameObject.AddComponent<SuctionManager>();
         }
 
+        if (audioManager == null)
+        {
+            audioManager = GetComponent<AudioManager>();
+        }
+
+        if (audioManager == null)
+        {
+            audioManager = gameObject.AddComponent<AudioManager>();
+        }
+
         itemSpawner.Configure(this, itemLayer, itemTemplate);
         suctionManager.Configure(this, airPurifier);
+        audioManager.Configure(sfxDatabase);
     }
 
     private void EnsureRuntimeView()

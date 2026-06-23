@@ -38,6 +38,7 @@ public class SuctionManager : MonoBehaviour
         if (target.Data.IsBomb)
         {
             gameManager.BeginBombLock();
+            gameManager.PlayBombSfx();
             PlayBomb(target, () => CompleteBomb(target));
             return;
         }
@@ -50,6 +51,7 @@ public class SuctionManager : MonoBehaviour
         }
         else
         {
+            gameManager.PlayWrongSfx();
             PlayFailure(target, () => Complete(target, false));
         }
     }
