@@ -55,6 +55,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Sprite streetStageBackgroundSprite;
     [SerializeField] private Sprite cityStageBackgroundSprite;
     [SerializeField] private Sprite spaceStageBackgroundSprite;
+    [SerializeField] private Sprite bottomVisibilityOverlaySprite;
     [SerializeField] private Sprite bombExplosionSprite;
     [SerializeField] private TextAsset itemMasterCsv;
     [SerializeField] private ItemSpriteDatabase itemSpriteDatabase;
@@ -66,6 +67,11 @@ public class GameManager : MonoBehaviour
 
     [Header("Suction Zone")]
     [SerializeField] private float suctionZoneRadius = 150f;
+
+    [Header("Bottom Visibility Overlay")]
+    [SerializeField, Range(0f, 1f)] private float overlayAlpha = 0.64f;
+    [SerializeField] private float overlayHeight = 820f;
+    [SerializeField] private float overlayBottomPadding = 0f;
 
     private readonly List<ItemController> activeItems = new List<ItemController>();
     private readonly StageManager stageManager = new StageManager();
@@ -114,6 +120,11 @@ public class GameManager : MonoBehaviour
         streetStageBackgroundSprite = streetBackground;
         cityStageBackgroundSprite = cityBackground;
         spaceStageBackgroundSprite = spaceBackground;
+    }
+
+    public void ConfigureBottomVisibilityOverlay(Sprite overlaySprite)
+    {
+        bottomVisibilityOverlaySprite = overlaySprite;
     }
 
     public void ConfigureDataAssets(TextAsset itemMaster, ItemSpriteDatabase spriteDatabase, SfxDatabase sfxDatabaseAsset = null)
@@ -634,6 +645,7 @@ public class GameManager : MonoBehaviour
 
         var root = canvasObject.GetComponent<RectTransform>();
         backgroundController = CreateBackgroundController(root, homeStageBackgroundSprite, streetStageBackgroundSprite, cityStageBackgroundSprite, spaceStageBackgroundSprite);
+        CreateBottomVisibilityOverlay(root, bottomVisibilityOverlaySprite, overlayAlpha, overlayHeight, overlayBottomPadding);
         CreatePanel("Play_Lane", root, new Vector2(0f, 0f), new Vector2(1080f, 520f), new Color(1f, 0.84f, 0.42f, 0f), false);
 
         itemLayer = CreateRect("ItemLayer", root, Vector2.zero, new Vector2(1080f, 1920f));
@@ -1205,6 +1217,26 @@ public class GameManager : MonoBehaviour
         var controller = overlay.gameObject.AddComponent<FadeController>();
         controller.Configure(overlay);
         return controller;
+    }
+
+    private static Image CreateBottomVisibilityOverlay(RectTransform parent, Sprite sprite, float alpha, float height, float bottomPadding)
+    {
+        var image = CreatePanel("BottomVisibilityOverlay", parent, Vector2.zero, new Vector2(1080f, height), Color.white, false);
+        var rect = image.rectTransform;
+        rect.anchorMin = new Vector2(0f, 0f);
+        rect.anchorMax = new Vector2(1f, 0f);
+        rect.pivot = new Vector2(0.5f, 0f);
+        rect.anchoredPosition = new Vector2(0f, bottomPadding);
+        rect.sizeDelta = new Vector2(0f, height);
+        rect.offsetMin = new Vector2(0f, bottomPadding);
+        rect.offsetMax = new Vector2(0f, bottomPadding + height);
+
+        image.sprite = sprite;
+        image.type = Image.Type.Sliced;
+        image.preserveAspect = false;
+        image.raycastTarget = false;
+        image.color = new Color(1f, 1f, 1f, Mathf.Clamp01(alpha));
+        return image;
     }
 
     private void CreateStartOverlay(RectTransform parent)
