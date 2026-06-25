@@ -9,19 +9,25 @@ using UnityEngine.InputSystem;
 public class TitleSceneController : MonoBehaviour
 {
     [SerializeField] private Image titleImage;
+    [SerializeField] private Image titleLogo;
     [SerializeField] private Text startText;
     [SerializeField] private Image fadePanel;
     [SerializeField] private string gameplaySceneName = "Main";
     [SerializeField] private float fadeDuration = 0.32f;
 
     private bool isTransitioning;
-    private Tween imageFloatTween;
-    private Tween imageScaleTween;
+    private Tween logoBreathTween;
     private Tween startTextTween;
 
     public void Configure(Image title, Text start, Image fade, string gameplayScene, float duration)
     {
+        Configure(title, null, start, fade, gameplayScene, duration);
+    }
+
+    public void Configure(Image title, Image logo, Text start, Image fade, string gameplayScene, float duration)
+    {
         titleImage = title;
+        titleLogo = logo;
         startText = start;
         fadePanel = fade;
         gameplaySceneName = gameplayScene;
@@ -43,6 +49,7 @@ public class TitleSceneController : MonoBehaviour
 
     private void Start()
     {
+        PlayIdleAnimations();
     }
 
     private void Update()
@@ -60,8 +67,7 @@ public class TitleSceneController : MonoBehaviour
 
     private void OnDestroy()
     {
-        imageFloatTween?.Kill();
-        imageScaleTween?.Kill();
+        logoBreathTween?.Kill();
         startTextTween?.Kill();
         fadePanel?.DOKill();
     }
@@ -69,13 +75,18 @@ public class TitleSceneController : MonoBehaviour
     private void StartGame()
     {
         isTransitioning = true;
-        imageFloatTween?.Kill();
-        imageScaleTween?.Kill();
+        logoBreathTween?.Kill();
         startTextTween?.Kill();
+
+        if (titleLogo != null)
+        {
+            titleLogo.rectTransform.localScale = Vector3.one;
+        }
 
         if (startText != null)
         {
             startText.text = "START!";
+            startText.color = Color.white;
         }
 
         if (fadePanel == null)
@@ -90,6 +101,30 @@ public class TitleSceneController : MonoBehaviour
             .SetUpdate(true)
             .SetEase(Ease.InOutSine)
             .OnComplete(() => SceneManager.LoadScene(gameplaySceneName));
+    }
+
+    private void PlayIdleAnimations()
+    {
+        if (titleLogo != null)
+        {
+            var logoRect = titleLogo.rectTransform;
+            logoRect.DOKill();
+            logoRect.localScale = Vector3.one;
+            logoBreathTween = logoRect
+                .DOScale(1.025f, 1.35f)
+                .SetEase(Ease.InOutSine)
+                .SetLoops(-1, LoopType.Yoyo);
+        }
+
+        if (startText != null)
+        {
+            startText.DOKill();
+            startText.color = Color.white;
+            startTextTween = startText
+                .DOFade(0.45f, 0.72f)
+                .SetEase(Ease.InOutSine)
+                .SetLoops(-1, LoopType.Yoyo);
+        }
     }
 
     private void StretchFadePanelToCanvas()

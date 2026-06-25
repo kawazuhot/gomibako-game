@@ -23,6 +23,8 @@ public class GameManager : MonoBehaviour
     private const float PenaltySeconds = 5f;
     private const float NormalTimeScale = 1f;
     private const float FastForwardTimeScale = 2.5f;
+    private const int RoundedPanelTextureSize = 48;
+    private const int RoundedPanelRadius = 12;
 
     [Header("Runtime References")]
     [SerializeField] private Canvas canvas;
@@ -83,6 +85,7 @@ public class GameManager : MonoBehaviour
     private readonly ScoreManager scoreManager = new ScoreManager();
     private readonly ComboManager comboManager = new ComboManager();
     private readonly TimerManager timerManager = new TimerManager();
+    private static Sprite roundedPanelSprite;
 
     private ItemController highlightedItem;
     private bool buttonFastForward;
@@ -96,6 +99,9 @@ public class GameManager : MonoBehaviour
     private bool isGameplayRestarting;
     private GameState currentState = GameState.WaitingToStart;
     private int lastDisplayedSuctionLevel = -1;
+    private int lastDisplayedTime = -1;
+    private int lastDisplayedScore = -1;
+    private int lastDisplayedCombo = -1;
     private int maxCombo;
     private int mistakeCount;
     private int bombHitCount;
@@ -734,22 +740,30 @@ public class GameManager : MonoBehaviour
         bombExplosionImage = CreateBombExplosionImage(root, bombExplosionSprite);
         scorePopupLayer = CreateRect("ScorePopupLayer", root, Vector2.zero, new Vector2(1080f, 1920f));
 
-        timeText = CreateReadableText("TIME_Text", root, "TIME 90", new Vector2(0f, 825f), new Vector2(360f, 92f), 62, new Color(1f, 0.94f, 0.22f), TextAnchor.MiddleCenter);
-        scoreText = CreateReadableText("SCORE_Text", root, "SCORE 0", new Vector2(0f, 742f), new Vector2(440f, 62f), 36, Color.white, TextAnchor.MiddleCenter);
-        comboText = CreateReadableText("COMBO_Text", root, "COMBO 0", new Vector2(0f, 682f), new Vector2(360f, 56f), 32, new Color(0.92f, 1f, 1f), TextAnchor.MiddleCenter);
+        scoreText = CreateReadableText("CENTER_HUD_Text", root, GetCenterHudText(90, 0), new Vector2(0f, 610f), new Vector2(390f, 150f), 30, Color.white, TextAnchor.MiddleCenter);
+        scoreText.lineSpacing = 0.82f;
+        timeText = scoreText;
+        comboText = CreateReadableText("COMBO_Text", root, "COMBO\n<size=62>0</size>", new Vector2(405f, 785f), new Vector2(220f, 126f), 30, GetComboHudColor(0), TextAnchor.MiddleCenter);
         var levelPanel = CreatePanel("SuctionLevel_Panel", root, new Vector2(-360f, 650f), new Vector2(190f, 390f), Color.white, false);
+        ApplyRoundedCorners(levelPanel);
         var levelPanelOutline = levelPanel.gameObject.AddComponent<Outline>();
         levelPanelOutline.effectColor = new Color(1f, 1f, 1f, 0.95f);
         levelPanelOutline.effectDistance = new Vector2(8f, -8f);
         levelPanelFill = CreatePanel("SuctionLevel_PanelFill", levelPanel.rectTransform, Vector2.zero, new Vector2(172f, 372f), LevelColorUtility.GetLevelColor(gaugeManager.SuctionLevel), false);
+        ApplyRoundedCorners(levelPanelFill);
         levelText = CreateText("SuctionLevel_Label", levelPanel.rectTransform, "吸引Lv", new Vector2(0f, 135f), new Vector2(160f, 60f), 28, new Color(0.12f, 0.18f, 0.28f), TextAnchor.MiddleCenter);
         levelNumberText = CreateText("SuctionLevel_Number", levelPanel.rectTransform, "1", new Vector2(0f, -30f), new Vector2(180f, 260f), 150, new Color(0.10f, 0.16f, 0.28f), TextAnchor.MiddleCenter);
         stageText = CreateReadableText("Stage_Text", root, "家ステージ", new Vector2(375f, 835f), new Vector2(300f, 56f), 28, Color.white, TextAnchor.MiddleCenter);
         resultText = CreateReadableText("Result_Text", root, "クリックで吸引", new Vector2(375f, 770f), new Vector2(300f, 56f), 26, new Color(0.92f, 1f, 1f), TextAnchor.MiddleCenter);
+        SetReadableTextVisible(stageText, false);
+        SetReadableTextVisible(resultText, false);
 
         var gaugeBack = CreatePanel("Gauge_Back", root, new Vector2(-490f, 650f), new Vector2(70f, 390f), Color.white, false);
-        CreatePanel("Gauge_BackFill", gaugeBack.rectTransform, Vector2.zero, new Vector2(52f, 372f), new Color(0.10f, 0.20f, 0.30f, 0.35f), false);
+        ApplyRoundedCorners(gaugeBack);
+        var gaugeBackFill = CreatePanel("Gauge_BackFill", gaugeBack.rectTransform, Vector2.zero, new Vector2(52f, 372f), new Color(0.10f, 0.20f, 0.30f, 0.35f), false);
+        ApplyRoundedCorners(gaugeBackFill);
         gaugeFill = CreatePanel("Gauge_Fill", gaugeBack.rectTransform, new Vector2(0f, -176f), new Vector2(42f, 0f), new Color(0.15f, 0.76f, 1f), false);
+        ApplyRoundedCorners(gaugeFill);
         gaugeFill.rectTransform.pivot = new Vector2(0.5f, 0f);
 
         fastForwardButton = CreateButton("FastForward_Button", root, "x2\n早送り", new Vector2(-260f, -650f), new Vector2(360f, 160f), new Color(0.26f, 0.62f, 1f));
@@ -757,6 +771,8 @@ public class GameManager : MonoBehaviour
         fastButton.Configure(this);
         gameplayRestartButton = CreateButton("GameplayRestartButton", root, "再", new Vector2(486f, 625f), new Vector2(88f, 88f), new Color(1f, 0.58f, 0.18f));
         gameplayRestartButton.onClick.AddListener(RestartGameplayScene);
+        BringReadableTextToFront(scoreText);
+        BringReadableTextToFront(comboText);
 
         CreateStartOverlay(root);
         fadeController = CreateFadeController(root);
@@ -1117,10 +1133,22 @@ public class GameManager : MonoBehaviour
 
     private void UpdateUi()
     {
-        timeText.text = $"TIME {Mathf.CeilToInt(timerManager.TimeLeft):00}";
-        scoreText.text = $"SCORE {scoreManager.Score}";
-        comboText.text = $"COMBO {comboManager.Combo}";
-        levelText.text = "吸引Lv";
+        var displayedTime = Mathf.CeilToInt(timerManager.TimeLeft);
+        if (displayedTime != lastDisplayedTime || scoreManager.Score != lastDisplayedScore)
+        {
+            SetTextIfChanged(scoreText, GetCenterHudText(displayedTime, scoreManager.Score));
+            lastDisplayedTime = displayedTime;
+            lastDisplayedScore = scoreManager.Score;
+        }
+
+        if (comboManager.Combo != lastDisplayedCombo)
+        {
+            comboText.color = GetComboHudColor(comboManager.Combo);
+            SetTextIfChanged(comboText, $"COMBO\n<size=62>{comboManager.Combo}</size>");
+            lastDisplayedCombo = comboManager.Combo;
+        }
+
+        SetTextIfChanged(levelText, "吸引Lv");
         if (levelNumberText != null && lastDisplayedSuctionLevel != gaugeManager.SuctionLevel)
         {
             var isMaxLevel = gaugeManager.SuctionLevel >= GaugeManager.MaxSuctionLevel;
@@ -1133,13 +1161,60 @@ public class GameManager : MonoBehaviour
             }
             lastDisplayedSuctionLevel = gaugeManager.SuctionLevel;
         }
-        stageText.text = stageManager.CurrentStageName;
         gaugeFill.rectTransform.sizeDelta = new Vector2(42f, 352f * gaugeManager.GaugeRate);
 
         if (IsTimeUp)
         {
-            resultText.text = "TIME UP";
+            SetTextIfChanged(resultText, "TIME UP");
         }
+    }
+
+    private static void SetTextIfChanged(Text target, string value)
+    {
+        if (target != null && target.text != value)
+        {
+            target.text = value;
+        }
+    }
+
+    private static string GetCenterHudText(int time, int score)
+    {
+        return $"<color=#FFF03B><size=82>{time:00}</size></color>\n<color=#FFFFFF><size=30>清浄量 {score}pt</size></color>";
+    }
+
+    private static Color GetComboHudColor(int combo)
+    {
+        if (combo >= 100)
+        {
+            return new Color(1f, 0.12f, 0.92f);
+        }
+
+        if (combo >= 70)
+        {
+            return new Color(0.72f, 0.28f, 1f);
+        }
+
+        if (combo >= 50)
+        {
+            return new Color(1f, 0.14f, 0.12f);
+        }
+
+        if (combo >= 40)
+        {
+            return new Color(1f, 0.48f, 0.08f);
+        }
+
+        if (combo >= 30)
+        {
+            return new Color(0.22f, 0.86f, 0.30f);
+        }
+
+        if (combo >= 20)
+        {
+            return new Color(1f, 0.92f, 0.12f);
+        }
+
+        return new Color(0.18f, 0.56f, 1f);
     }
 
     private void UpdateLevelPanelColor()
@@ -1217,6 +1292,61 @@ public class GameManager : MonoBehaviour
         return image;
     }
 
+    private static Image CreateRoundedPanel(string name, RectTransform parent, Vector2 anchoredPosition, Vector2 size, Color color, bool raycastTarget)
+    {
+        var image = CreatePanel(name, parent, anchoredPosition, size, color, raycastTarget);
+        ApplyRoundedCorners(image);
+        return image;
+    }
+
+    private static void ApplyRoundedCorners(Image image)
+    {
+        if (image == null)
+        {
+            return;
+        }
+
+        image.sprite = GetRoundedPanelSprite();
+        image.type = Image.Type.Sliced;
+    }
+
+    private static Sprite GetRoundedPanelSprite()
+    {
+        if (roundedPanelSprite != null)
+        {
+            return roundedPanelSprite;
+        }
+
+        var texture = new Texture2D(RoundedPanelTextureSize, RoundedPanelTextureSize, TextureFormat.RGBA32, false);
+        texture.wrapMode = TextureWrapMode.Clamp;
+        texture.filterMode = FilterMode.Bilinear;
+
+        var radius = RoundedPanelRadius;
+        var maxIndex = RoundedPanelTextureSize - 1;
+        for (var y = 0; y < RoundedPanelTextureSize; y++)
+        {
+            for (var x = 0; x < RoundedPanelTextureSize; x++)
+            {
+                var nearestX = Mathf.Clamp(x, radius, maxIndex - radius);
+                var nearestY = Mathf.Clamp(y, radius, maxIndex - radius);
+                var distance = Vector2.Distance(new Vector2(x, y), new Vector2(nearestX, nearestY));
+                texture.SetPixel(x, y, distance <= radius ? Color.white : Color.clear);
+            }
+        }
+
+        texture.Apply();
+        roundedPanelSprite = Sprite.Create(
+            texture,
+            new Rect(0f, 0f, RoundedPanelTextureSize, RoundedPanelTextureSize),
+            new Vector2(0.5f, 0.5f),
+            100f,
+            0,
+            SpriteMeshType.FullRect,
+            new Vector4(radius, radius, radius, radius));
+        roundedPanelSprite.name = "GeneratedRoundedPanel";
+        return roundedPanelSprite;
+    }
+
     private static Text CreateText(string name, RectTransform parent, string text, Vector2 anchoredPosition, Vector2 size, int fontSize, Color color, TextAnchor alignment)
     {
         var rect = CreateRect(name, parent, anchoredPosition, size);
@@ -1227,6 +1357,7 @@ public class GameManager : MonoBehaviour
         label.fontStyle = FontStyle.Bold;
         label.alignment = alignment;
         label.color = color;
+        label.supportRichText = true;
         label.raycastTarget = false;
         var outline = rect.gameObject.AddComponent<Outline>();
         outline.effectColor = Color.white;
@@ -1236,10 +1367,7 @@ public class GameManager : MonoBehaviour
 
     private static Text CreateReadableText(string name, RectTransform parent, string text, Vector2 anchoredPosition, Vector2 size, int fontSize, Color color, TextAnchor alignment)
     {
-        var panel = CreatePanel(name + "_Panel", parent, anchoredPosition, size, new Color(0.04f, 0.08f, 0.16f, 0.62f), false);
-        var panelOutline = panel.gameObject.AddComponent<Outline>();
-        panelOutline.effectColor = new Color(1f, 1f, 1f, 0.88f);
-        panelOutline.effectDistance = new Vector2(5f, -5f);
+        var panel = CreateReadablePanel(name + "_Panel", parent, anchoredPosition, size);
 
         var label = CreateText(name, panel.rectTransform, text, Vector2.zero, size, fontSize, color, alignment);
         var outline = label.GetComponent<Outline>();
@@ -1255,13 +1383,54 @@ public class GameManager : MonoBehaviour
         return label;
     }
 
+    private static Image CreateReadablePanel(string name, RectTransform parent, Vector2 anchoredPosition, Vector2 size)
+    {
+        var panel = CreateRoundedPanel(name, parent, anchoredPosition, size, new Color(0.04f, 0.08f, 0.16f, 0.62f), false);
+        var panelOutline = panel.gameObject.AddComponent<Outline>();
+        panelOutline.effectColor = new Color(1f, 1f, 1f, 0.88f);
+        panelOutline.effectDistance = new Vector2(5f, -5f);
+        return panel;
+    }
+
+    private static void SetReadableTextVisible(Text label, bool visible)
+    {
+        if (label == null)
+        {
+            return;
+        }
+
+        if (label.transform.parent != null)
+        {
+            label.transform.parent.gameObject.SetActive(visible);
+            return;
+        }
+
+        label.gameObject.SetActive(visible);
+    }
+
+    private static void BringReadableTextToFront(Text label)
+    {
+        if (label == null)
+        {
+            return;
+        }
+
+        if (label.transform.parent != null && label.transform.parent.GetComponent<Image>() != null)
+        {
+            label.transform.parent.SetAsLastSibling();
+            return;
+        }
+
+        label.transform.SetAsLastSibling();
+    }
+
     private static Button CreateButton(string name, RectTransform parent, string text, Vector2 anchoredPosition, Vector2 size, Color color)
     {
-        var image = CreatePanel(name, parent, anchoredPosition, size, Color.white, true);
+        var image = CreateRoundedPanel(name, parent, anchoredPosition, size, Color.white, true);
         var outline = image.gameObject.AddComponent<Outline>();
         outline.effectColor = Color.white;
         outline.effectDistance = new Vector2(6f, -6f);
-        var inner = CreatePanel("Fill", image.rectTransform, Vector2.zero, size - new Vector2(14f, 14f), color, false);
+        var inner = CreateRoundedPanel("Fill", image.rectTransform, Vector2.zero, size - new Vector2(14f, 14f), color, false);
         var label = CreateText("Label", image.rectTransform, text, Vector2.zero, size, 38, Color.white, TextAnchor.MiddleCenter);
         var labelOutline = label.GetComponent<Outline>();
         if (labelOutline != null)

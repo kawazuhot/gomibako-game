@@ -11,6 +11,7 @@ public static class GanbareAirPurifierMvpSceneBuilder
     private const string ScenePath = "Assets/_Project/Scenes/Main.unity";
     private const string GameplaySceneName = "Main";
     private const string TitleMainVisualPath = "Assets/_Project/Art/Title/Title_MainVisual.png";
+    private const string TitleLogoPath = "Assets/_Project/Art/UI/Title/title_logo.png";
     private const string AirPurifierNormalPath = "Assets/_Project/Art/AirPurifier/AirPurifier_Normal.png";
     private const string AirPurifierSuctionPath = "Assets/_Project/Art/AirPurifier/AirPurifier_Suction.png";
     private const string AirPurifierFailPath = "Assets/_Project/Art/AirPurifier/AirPurifier_Fail.png";
@@ -41,6 +42,17 @@ public static class GanbareAirPurifierMvpSceneBuilder
         };
         AssetDatabase.SaveAssets();
         Debug.Log($"Rebuilt GanbareAirPurifier scenes: {TitleScenePath}, {ScenePath}");
+    }
+
+    [MenuItem("GanbareAirPurifier/Rebuild Title Scene")]
+    public static void RebuildTitleSceneOnly()
+    {
+        EnsureDirectory("Assets/_Project/Scenes");
+        ConfigureSpriteImport(TitleMainVisualPath);
+        ConfigureSpriteImport(TitleLogoPath);
+        RebuildTitleScene();
+        AssetDatabase.SaveAssets();
+        Debug.Log($"Rebuilt GanbareAirPurifier title scene: {TitleScenePath}");
     }
 
     private static void RebuildGameplayScene()
@@ -91,6 +103,15 @@ public static class GanbareAirPurifierMvpSceneBuilder
         titleImage.gameObject.AddComponent<AspectFillImage>();
         titleImage.transform.SetAsLastSibling();
 
+        var titleLogoSprite = AssetDatabase.LoadAssetAtPath<Sprite>(TitleLogoPath);
+        var titleLogo = CreatePanel("TitleLogo", root, new Vector2(25f, -405f), new Vector2(880f, 424f), Color.white, false);
+        AnchorTopCenter(titleLogo.rectTransform);
+        titleLogo.sprite = titleLogoSprite;
+        titleLogo.preserveAspect = true;
+        titleLogo.raycastTarget = false;
+        titleLogo.color = titleLogoSprite != null ? Color.white : new Color(1f, 1f, 1f, 0f);
+        titleLogo.transform.SetAsLastSibling();
+
         var startText = CreateText("Start_Text", root, "タップでスタート", new Vector2(0f, -760f), new Vector2(620f, 90f), 46, Color.white, TextAnchor.MiddleCenter);
         var startOutline = startText.GetComponent<Outline>();
         if (startOutline != null)
@@ -105,7 +126,7 @@ public static class GanbareAirPurifierMvpSceneBuilder
 
         var controllerObject = new GameObject("TitleSceneController");
         var controller = controllerObject.AddComponent<TitleSceneController>();
-        controller.Configure(titleImage, startText, fadePanel, GameplaySceneName, 0.32f);
+        controller.Configure(titleImage, titleLogo, startText, fadePanel, GameplaySceneName, 0.32f);
 
         background.transform.SetAsFirstSibling();
         EditorSceneManager.SaveScene(scene, TitleScenePath);
@@ -127,6 +148,7 @@ public static class GanbareAirPurifierMvpSceneBuilder
         ConfigureSpriteImport(AirPurifierSuctionPath);
         ConfigureSpriteImport(AirPurifierFailPath);
         ConfigureSpriteImport(TitleMainVisualPath);
+        ConfigureSpriteImport(TitleLogoPath);
         ConfigureSpriteImport(HomeStageBackgroundPath);
         ConfigureSpriteImport(StreetStageBackgroundPath);
         ConfigureSpriteImport(CityStageBackgroundPath);
@@ -163,6 +185,18 @@ public static class GanbareAirPurifierMvpSceneBuilder
         rect.sizeDelta = Vector2.zero;
         rect.offsetMin = Vector2.zero;
         rect.offsetMax = Vector2.zero;
+    }
+
+    private static void AnchorTopCenter(RectTransform rect)
+    {
+        if (rect == null)
+        {
+            return;
+        }
+
+        rect.anchorMin = new Vector2(0.5f, 1f);
+        rect.anchorMax = new Vector2(0.5f, 1f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
     }
 
     private static Text CreateText(string name, RectTransform parent, string text, Vector2 anchoredPosition, Vector2 size, int fontSize, Color color, TextAnchor alignment)
