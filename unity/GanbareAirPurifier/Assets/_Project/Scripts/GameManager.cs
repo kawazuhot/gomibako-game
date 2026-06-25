@@ -271,7 +271,18 @@ public class GameManager : MonoBehaviour
 
     public static float GetStageMoveSpeedMultiplier(PurifierStage stage)
     {
-        return GetStageSpawnIntervalMultiplier(stage) * 1.3f;
+        switch (stage)
+        {
+            case PurifierStage.Street:
+                return 1.2f * 1.3f;
+            case PurifierStage.City:
+                return 1.4f * 1.3f;
+            case PurifierStage.Space:
+                return 1.6f * 1.3f;
+            case PurifierStage.Home:
+            default:
+                return 1.0f * 1.3f;
+        }
     }
 
     public static float GetStageSpawnIntervalMultiplier(PurifierStage stage)
@@ -283,7 +294,7 @@ public class GameManager : MonoBehaviour
             case PurifierStage.City:
                 return 1.4f;
             case PurifierStage.Space:
-                return 1.6f;
+                return 2.2f;
             case PurifierStage.Home:
             default:
                 return 1.0f;
@@ -1112,7 +1123,9 @@ public class GameManager : MonoBehaviour
         levelText.text = "吸引Lv";
         if (levelNumberText != null && lastDisplayedSuctionLevel != gaugeManager.SuctionLevel)
         {
-            levelNumberText.text = gaugeManager.SuctionLevel.ToString();
+            var isMaxLevel = gaugeManager.SuctionLevel >= GaugeManager.MaxSuctionLevel;
+            levelNumberText.text = isMaxLevel ? "MAX" : gaugeManager.SuctionLevel.ToString();
+            levelNumberText.fontSize = isMaxLevel ? 82 : 150;
             UpdateLevelPanelColor();
             if (lastDisplayedSuctionLevel >= 0)
             {

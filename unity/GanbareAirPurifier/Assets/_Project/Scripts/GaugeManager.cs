@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class GaugeManager
 {
-    private const int MaxSuctionLevel = 15;
+    public const int MaxSuctionLevel = 12;
     private static readonly float[] RequiredGaugeByLevel =
     {
         0f,
