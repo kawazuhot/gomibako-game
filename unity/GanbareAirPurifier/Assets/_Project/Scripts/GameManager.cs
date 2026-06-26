@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using DG.Tweening;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -724,6 +725,7 @@ public class GameManager : MonoBehaviour
         var root = canvasObject.GetComponent<RectTransform>();
         backgroundController = CreateBackgroundController(root, homeStageBackgroundSprite, streetStageBackgroundSprite, cityStageBackgroundSprite, spaceStageBackgroundSprite);
         CreateBottomVisibilityOverlay(root, bottomVisibilityOverlaySprite, overlayAlpha, overlayHeight, overlayBottomPadding);
+        CreateTopVisibilityOverlay(root, bottomVisibilityOverlaySprite, overlayAlpha, overlayHeight, overlayBottomPadding);
         CreatePanel("Play_Lane", root, new Vector2(0f, 0f), new Vector2(1080f, 520f), new Color(1f, 0.84f, 0.42f, 0f), false);
 
         itemLayer = CreateRect("ItemLayer", root, Vector2.zero, new Vector2(1080f, 1920f));
@@ -741,11 +743,11 @@ public class GameManager : MonoBehaviour
         scorePopupLayer = CreateRect("ScorePopupLayer", root, Vector2.zero, new Vector2(1080f, 1920f));
 
         var hudPanelColor = new Color(0.42f, 0.78f, 1f, 0.38f);
-        scoreText = CreateReadableText("CENTER_HUD_Text", root, GetCenterHudText(90, 0), new Vector2(5f, 650f), new Vector2(390f, 300f), 42, Color.white, TextAnchor.MiddleCenter, hudPanelColor);
+        scoreText = CreateReadableText("CENTER_HUD_Text", root, GetCenterHudText(90, 0), new Vector2(5f, 700f), new Vector2(390f, 300f), 42, Color.white, TextAnchor.MiddleCenter, hudPanelColor);
         scoreText.lineSpacing = 0.58f;
         timeText = scoreText;
-        comboText = CreateReadableText("COMBO_Text", root, "COMBO\n<size=68>0</size>", new Vector2(360f, 730f), new Vector2(242f, 139f), 33, GetComboHudColor(0), TextAnchor.MiddleCenter, hudPanelColor);
-        var levelPanel = CreatePanel("SuctionLevel_Panel", root, new Vector2(-335f, 650f), new Vector2(190f, 390f), Color.white, false);
+        comboText = CreateReadableText("COMBO_Text", root, GetComboHudText(0), new Vector2(360f, 780f), new Vector2(242f, 139f), 33, Color.white, TextAnchor.MiddleCenter, hudPanelColor);
+        var levelPanel = CreatePanel("SuctionLevel_Panel", root, new Vector2(-335f, 700f), new Vector2(190f, 390f), Color.white, false);
         ApplyRoundedCorners(levelPanel);
         var levelPanelOutline = levelPanel.gameObject.AddComponent<Outline>();
         levelPanelOutline.effectColor = new Color(1f, 1f, 1f, 0.95f);
@@ -759,7 +761,7 @@ public class GameManager : MonoBehaviour
         SetReadableTextVisible(stageText, false);
         SetReadableTextVisible(resultText, false);
 
-        var gaugeBack = CreatePanel("Gauge_Back", root, new Vector2(-465f, 650f), new Vector2(70f, 390f), Color.white, false);
+        var gaugeBack = CreatePanel("Gauge_Back", root, new Vector2(-465f, 700f), new Vector2(70f, 390f), Color.white, false);
         ApplyRoundedCorners(gaugeBack);
         var gaugeBackFill = CreatePanel("Gauge_BackFill", gaugeBack.rectTransform, Vector2.zero, new Vector2(52f, 372f), new Color(0.10f, 0.20f, 0.30f, 0.35f), false);
         ApplyRoundedCorners(gaugeBackFill);
@@ -770,7 +772,7 @@ public class GameManager : MonoBehaviour
         fastForwardButton = CreateButton("FastForward_Button", root, "x2\n早送り", new Vector2(-260f, -650f), new Vector2(360f, 160f), new Color(0.26f, 0.62f, 1f));
         var fastButton = fastForwardButton.gameObject.AddComponent<FastForwardButton>();
         fastButton.Configure(this);
-        gameplayRestartButton = CreateButton("GameplayRestartButton", root, "再", new Vector2(366f, 585f), new Vector2(88f, 88f), new Color(1f, 0.58f, 0.18f));
+        gameplayRestartButton = CreateButton("GameplayRestartButton", root, "再", new Vector2(366f, 635f), new Vector2(88f, 88f), new Color(1f, 0.58f, 0.18f));
         gameplayRestartButton.onClick.AddListener(RestartGameplayScene);
         BringReadableTextToFront(scoreText);
         BringReadableTextToFront(comboText);
@@ -1144,8 +1146,8 @@ public class GameManager : MonoBehaviour
 
         if (comboManager.Combo != lastDisplayedCombo)
         {
-            comboText.color = GetComboHudColor(comboManager.Combo);
-            SetTextIfChanged(comboText, $"COMBO\n<size=68>{comboManager.Combo}</size>");
+            comboText.color = Color.white;
+            SetTextIfChanged(comboText, GetComboHudText(comboManager.Combo));
             lastDisplayedCombo = comboManager.Combo;
         }
 
@@ -1180,7 +1182,69 @@ public class GameManager : MonoBehaviour
 
     private static string GetCenterHudText(int time, int score)
     {
-        return $"<color=#FFF03B><size=132>{time:00}</size></color>\n<color=#FFFFFF><size=34>清浄量</size></color>\n<color=#FFFFFF><size=54>{score}pt</size></color>";
+        return $"<color=#FFF03B><size=132>{time:00}</size></color>\n<color=#FFFFFF><size=34>清浄量</size></color>\n<size=54>{GetScoreHudText(score)}</size>";
+    }
+
+    private static string GetComboHudText(int combo)
+    {
+        return $"<color=#FFFFFF>COMBO</color>\n<color=#{GetColorHex(GetComboHudColor(combo))}><size=68>{combo}</size></color>";
+    }
+
+    private static string GetScoreHudText(int score)
+    {
+        var scoreText = $"{score.ToString("#,0", CultureInfo.InvariantCulture)}pt";
+        if (score >= 500000)
+        {
+            return GetRainbowRichText(scoreText);
+        }
+
+        return $"<color=#{GetScoreHudColorHex(score)}>{scoreText}</color>";
+    }
+
+    private static string GetScoreHudColorHex(int score)
+    {
+        if (score >= 200000)
+        {
+            return "FF3030";
+        }
+
+        if (score >= 100000)
+        {
+            return "35E85A";
+        }
+
+        if (score >= 50000)
+        {
+            return "FFF03B";
+        }
+
+        if (score >= 10000)
+        {
+            return "4CC7FF";
+        }
+
+        return "FFFFFF";
+    }
+
+    private static string GetRainbowRichText(string value)
+    {
+        var colors = new[] { "FF3030", "FF9A20", "FFF03B", "35E85A", "35D7FF", "4B75FF", "D24BFF" };
+        var builder = new System.Text.StringBuilder(value.Length * 24);
+        for (var i = 0; i < value.Length; i++)
+        {
+            builder.Append("<color=#");
+            builder.Append(colors[i % colors.Length]);
+            builder.Append(">");
+            builder.Append(value[i]);
+            builder.Append("</color>");
+        }
+
+        return builder.ToString();
+    }
+
+    private static string GetColorHex(Color color)
+    {
+        return ColorUtility.ToHtmlStringRGB(color);
     }
 
     private static Color GetComboHudColor(int combo)
@@ -1550,8 +1614,32 @@ public class GameManager : MonoBehaviour
         image.type = Image.Type.Sliced;
         image.preserveAspect = false;
         image.raycastTarget = false;
-        image.color = new Color(1f, 1f, 1f, Mathf.Clamp01(alpha));
+        image.color = GetVisibilityOverlayColor(alpha);
         return image;
+    }
+
+    private static Image CreateTopVisibilityOverlay(RectTransform parent, Sprite sprite, float alpha, float height, float topPadding)
+    {
+        var image = CreatePanel("TopVisibilityOverlay", parent, Vector2.zero, new Vector2(1080f, height), Color.white, false);
+        var rect = image.rectTransform;
+        rect.anchorMin = new Vector2(0f, 1f);
+        rect.anchorMax = new Vector2(1f, 1f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = new Vector2(0f, -topPadding - height * 0.5f);
+        rect.sizeDelta = new Vector2(0f, height);
+        rect.localRotation = Quaternion.Euler(0f, 0f, 180f);
+
+        image.sprite = sprite;
+        image.type = Image.Type.Sliced;
+        image.preserveAspect = false;
+        image.raycastTarget = false;
+        image.color = GetVisibilityOverlayColor(alpha);
+        return image;
+    }
+
+    private static Color GetVisibilityOverlayColor(float alpha)
+    {
+        return new Color(0.38f, 0.76f, 1f, Mathf.Clamp01(alpha * 0.55f));
     }
 
     private void CreateStartOverlay(RectTransform parent)
@@ -1559,7 +1647,7 @@ public class GameManager : MonoBehaviour
         startOverlayDimPanel = CreatePanel("StartOverlayDimPanel", parent, Vector2.zero, new Vector2(1080f, 1920f), new Color(0f, 0f, 0f, 0.45f), true);
         StretchToParent(startOverlayDimPanel.rectTransform);
 
-        startPromptText = CreateText("StartPromptText", parent, "TAPで清浄スタート！", Vector2.zero, new Vector2(930f, 180f), 76, new Color(1f, 0.94f, 0.22f), TextAnchor.MiddleCenter);
+        startPromptText = CreateText("StartPromptText", parent, "TAPで清浄スタート！", Vector2.zero, new Vector2(930f, 180f), 76, new Color(0.18f, 0.62f, 1f), TextAnchor.MiddleCenter);
         var promptOutline = startPromptText.GetComponent<Outline>();
         if (promptOutline != null)
         {
@@ -1635,7 +1723,7 @@ public class GameManager : MonoBehaviour
 
     private static AirPurifierController CreateAirPurifier(RectTransform parent, Sprite normalSprite, Sprite suctionSprite, Sprite failSprite)
     {
-        var rootImage = CreatePanel("AirPurifier", parent, new Vector2(245f, -590f), new Vector2(660f, 660f), Color.white, false);
+        var rootImage = CreatePanel("AirPurifier", parent, new Vector2(245f, -610f), new Vector2(594f, 594f), Color.white, false);
         rootImage.sprite = normalSprite;
         rootImage.preserveAspect = true;
 
@@ -1646,7 +1734,7 @@ public class GameManager : MonoBehaviour
             CreatePanel("Fallback_Intake", body.rectTransform, new Vector2(0f, 78f), new Vector2(160f, 28f), new Color(0.32f, 0.72f, 1f), false);
         }
 
-        var suctionPoint = CreateRect("SuctionPoint", rootImage.rectTransform, new Vector2(0f, 308f), new Vector2(10f, 10f));
+        var suctionPoint = CreateRect("SuctionPoint", rootImage.rectTransform, new Vector2(0f, 277.2f), new Vector2(10f, 10f));
         var controller = rootImage.gameObject.AddComponent<AirPurifierController>();
         controller.Configure(rootImage.rectTransform, suctionPoint, rootImage, normalSprite, suctionSprite, failSprite);
         return controller;
