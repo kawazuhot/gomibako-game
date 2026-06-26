@@ -949,16 +949,16 @@ public class GameManager : MonoBehaviour
         InitializeScorePopupPool();
 
         var hudPanelColor = new Color(0.42f, 0.78f, 1f, 0.38f);
-        scoreText = CreateReadableText("CENTER_HUD_Text", root, GetCenterHudText(90, 0), new Vector2(5f, 700f), new Vector2(390f, 300f), 42, Color.white, TextAnchor.MiddleCenter, hudPanelColor);
+        scoreText = CreateReadableText("CENTER_HUD_Text", root, GetCenterHudText(90, 0), new Vector2(5f, 715f), new Vector2(390f, 300f), 42, Color.white, TextAnchor.MiddleCenter, hudPanelColor);
         scoreText.lineSpacing = 0.58f;
         timeText = scoreText;
-        comboText = CreateReadableText("COMBO_Text", root, GetComboHudText(0), new Vector2(360f, 780f), new Vector2(242f, 139f), 33, Color.white, TextAnchor.MiddleCenter, hudPanelColor);
-        var levelPanel = CreatePanel("SuctionLevel_Panel", root, new Vector2(-335f, 700f), new Vector2(190f, 390f), Color.white, false);
+        comboText = CreateReadableText("COMBO_Text", root, GetComboHudText(0), new Vector2(360f, 795f), new Vector2(242f, 139f), 33, Color.white, TextAnchor.MiddleCenter, hudPanelColor);
+        var levelPanel = CreatePanel("SuctionLevel_Panel", root, new Vector2(-335f, 692f), new Vector2(190f, 351f), Color.white, false);
         ApplyRoundedCorners(levelPanel);
         var levelPanelOutline = levelPanel.gameObject.AddComponent<Outline>();
         levelPanelOutline.effectColor = new Color(1f, 1f, 1f, 0.95f);
         levelPanelOutline.effectDistance = new Vector2(8f, -8f);
-        levelPanelFill = CreatePanel("SuctionLevel_PanelFill", levelPanel.rectTransform, Vector2.zero, new Vector2(172f, 372f), LevelColorUtility.GetLevelColor(gaugeManager.SuctionLevel), false);
+        levelPanelFill = CreatePanel("SuctionLevel_PanelFill", levelPanel.rectTransform, Vector2.zero, new Vector2(172f, 334.8f), LevelColorUtility.GetLevelColor(gaugeManager.SuctionLevel), false);
         ApplyRoundedCorners(levelPanelFill);
         levelText = CreateText("SuctionLevel_Label", levelPanel.rectTransform, "吸引Lv", new Vector2(0f, 135f), new Vector2(160f, 60f), 28, new Color(0.12f, 0.18f, 0.28f), TextAnchor.MiddleCenter);
         levelNumberText = CreateText("SuctionLevel_Number", levelPanel.rectTransform, "1", new Vector2(0f, -30f), new Vector2(180f, 260f), 150, new Color(0.10f, 0.16f, 0.28f), TextAnchor.MiddleCenter);
@@ -967,18 +967,18 @@ public class GameManager : MonoBehaviour
         SetReadableTextVisible(stageText, true);
         SetReadableTextVisible(resultText, false);
 
-        var gaugeBack = CreatePanel("Gauge_Back", root, new Vector2(-465f, 700f), new Vector2(70f, 390f), Color.white, false);
+        var gaugeBack = CreatePanel("Gauge_Back", root, new Vector2(-465f, 692f), new Vector2(70f, 358.8f), Color.white, false);
         ApplyRoundedCorners(gaugeBack);
-        var gaugeBackFill = CreatePanel("Gauge_BackFill", gaugeBack.rectTransform, Vector2.zero, new Vector2(52f, 372f), new Color(0.10f, 0.20f, 0.30f, 0.35f), false);
+        var gaugeBackFill = CreatePanel("Gauge_BackFill", gaugeBack.rectTransform, Vector2.zero, new Vector2(52f, 342.24f), new Color(0.10f, 0.20f, 0.30f, 0.35f), false);
         ApplyRoundedCorners(gaugeBackFill);
-        gaugeFill = CreatePanel("Gauge_Fill", gaugeBack.rectTransform, new Vector2(0f, -176f), new Vector2(42f, 0f), new Color(0.15f, 0.76f, 1f), false);
+        gaugeFill = CreatePanel("Gauge_Fill", gaugeBack.rectTransform, new Vector2(0f, -161.92f), new Vector2(42f, 0f), new Color(0.15f, 0.76f, 1f), false);
         ApplyRoundedCorners(gaugeFill);
         gaugeFill.rectTransform.pivot = new Vector2(0.5f, 0f);
 
         fastForwardButton = CreateIconButton("FastForward_Button", root, fastForwardButtonSprite, "x2\n早送り", new Vector2(-225f, -705f), new Vector2(486f, 216f), new Color(0.26f, 0.62f, 1f));
         var fastButton = fastForwardButton.gameObject.AddComponent<FastForwardButton>();
         fastButton.Configure(this);
-        gameplayRestartButton = CreateButton("GameplayRestartButton", root, "再", new Vector2(366f, 635f), new Vector2(88f, 88f), new Color(1f, 0.58f, 0.18f));
+        gameplayRestartButton = CreateButton("GameplayRestartButton", root, "再", new Vector2(366f, 650f), new Vector2(88f, 88f), new Color(1f, 0.58f, 0.18f));
         gameplayRestartButton.onClick.AddListener(RestartGameplayScene);
         BringReadableTextToFront(scoreText);
         BringReadableTextToFront(comboText);
@@ -1383,7 +1383,7 @@ public class GameManager : MonoBehaviour
             }
             lastDisplayedSuctionLevel = gaugeManager.SuctionLevel;
         }
-        gaugeFill.rectTransform.sizeDelta = new Vector2(42f, 352f * gaugeManager.GaugeRate);
+        gaugeFill.rectTransform.sizeDelta = new Vector2(42f, 323.84f * gaugeManager.GaugeRate);
 
         if (IsTimeUp)
         {

@@ -16,7 +16,7 @@ public class GaugeManager
         8000f,
         12000f,
         8000f,
-        8000f,
+        12000f,
         8000f,
         8000f,
         8000f
