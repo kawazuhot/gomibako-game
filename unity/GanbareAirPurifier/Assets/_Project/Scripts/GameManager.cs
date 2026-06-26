@@ -61,6 +61,8 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Sprite cityStageBackgroundSprite;
     [SerializeField] private Sprite spaceStageBackgroundSprite;
     [SerializeField] private Sprite bottomVisibilityOverlaySprite;
+    [SerializeField] private Sprite playUiBackgroundSprite;
+    [SerializeField] private Sprite fastForwardButtonSprite;
     [SerializeField] private Sprite bombExplosionSprite;
     [SerializeField] private TextAsset itemMasterCsv;
     [SerializeField] private ItemSpriteDatabase itemSpriteDatabase;
@@ -79,6 +81,7 @@ public class GameManager : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float overlayAlpha = 0.64f;
     [SerializeField] private float overlayHeight = 820f;
     [SerializeField] private float overlayBottomPadding = 0f;
+    [SerializeField, Range(0f, 1f)] private float playUiBackgroundAlpha = 0.62f;
 
     private readonly List<ItemController> activeItems = new List<ItemController>();
     private readonly StageManager stageManager = new StageManager();
@@ -143,6 +146,16 @@ public class GameManager : MonoBehaviour
     public void ConfigureBottomVisibilityOverlay(Sprite overlaySprite)
     {
         bottomVisibilityOverlaySprite = overlaySprite;
+    }
+
+    public void ConfigurePlayUiBackground(Sprite backgroundSprite)
+    {
+        playUiBackgroundSprite = backgroundSprite;
+    }
+
+    public void ConfigureFastForwardButtonSprite(Sprite buttonSprite)
+    {
+        fastForwardButtonSprite = buttonSprite;
     }
 
     public void ConfigureDataAssets(TextAsset itemMaster, ItemSpriteDatabase spriteDatabase, SfxDatabase sfxDatabaseAsset = null)
@@ -724,7 +737,7 @@ public class GameManager : MonoBehaviour
 
         var root = canvasObject.GetComponent<RectTransform>();
         backgroundController = CreateBackgroundController(root, homeStageBackgroundSprite, streetStageBackgroundSprite, cityStageBackgroundSprite, spaceStageBackgroundSprite);
-        CreateBottomVisibilityOverlay(root, bottomVisibilityOverlaySprite, overlayAlpha, overlayHeight, overlayBottomPadding);
+        CreateBottomPlayUiBackground(root, playUiBackgroundSprite, playUiBackgroundAlpha, overlayBottomPadding);
         CreateTopVisibilityOverlay(root, bottomVisibilityOverlaySprite, overlayAlpha, overlayHeight, overlayBottomPadding);
         CreatePanel("Play_Lane", root, new Vector2(0f, 0f), new Vector2(1080f, 520f), new Color(1f, 0.84f, 0.42f, 0f), false);
 
@@ -756,9 +769,9 @@ public class GameManager : MonoBehaviour
         ApplyRoundedCorners(levelPanelFill);
         levelText = CreateText("SuctionLevel_Label", levelPanel.rectTransform, "吸引Lv", new Vector2(0f, 135f), new Vector2(160f, 60f), 28, new Color(0.12f, 0.18f, 0.28f), TextAnchor.MiddleCenter);
         levelNumberText = CreateText("SuctionLevel_Number", levelPanel.rectTransform, "1", new Vector2(0f, -30f), new Vector2(180f, 260f), 150, new Color(0.10f, 0.16f, 0.28f), TextAnchor.MiddleCenter);
-        stageText = CreateReadableText("Stage_Text", root, "家ステージ", new Vector2(375f, 835f), new Vector2(300f, 56f), 28, Color.white, TextAnchor.MiddleCenter);
+        stageText = CreateReadableText("Stage_Text", root, GetStageHudText(), new Vector2(-220f, -815f), new Vector2(420f, 56f), 28, Color.white, TextAnchor.MiddleCenter);
         resultText = CreateReadableText("Result_Text", root, "クリックで吸引", new Vector2(375f, 770f), new Vector2(300f, 56f), 26, new Color(0.92f, 1f, 1f), TextAnchor.MiddleCenter);
-        SetReadableTextVisible(stageText, false);
+        SetReadableTextVisible(stageText, true);
         SetReadableTextVisible(resultText, false);
 
         var gaugeBack = CreatePanel("Gauge_Back", root, new Vector2(-465f, 700f), new Vector2(70f, 390f), Color.white, false);
@@ -769,7 +782,7 @@ public class GameManager : MonoBehaviour
         ApplyRoundedCorners(gaugeFill);
         gaugeFill.rectTransform.pivot = new Vector2(0.5f, 0f);
 
-        fastForwardButton = CreateButton("FastForward_Button", root, "x2\n早送り", new Vector2(-260f, -650f), new Vector2(360f, 160f), new Color(0.26f, 0.62f, 1f));
+        fastForwardButton = CreateIconButton("FastForward_Button", root, fastForwardButtonSprite, "x2\n早送り", new Vector2(-220f, -680f), new Vector2(486f, 216f), new Color(0.26f, 0.62f, 1f));
         var fastButton = fastForwardButton.gameObject.AddComponent<FastForwardButton>();
         fastButton.Configure(this);
         gameplayRestartButton = CreateButton("GameplayRestartButton", root, "再", new Vector2(366f, 635f), new Vector2(88f, 88f), new Color(1f, 0.58f, 0.18f));
@@ -1144,6 +1157,8 @@ public class GameManager : MonoBehaviour
             lastDisplayedScore = scoreManager.Score;
         }
 
+        SetTextIfChanged(stageText, GetStageHudText());
+
         if (comboManager.Combo != lastDisplayedCombo)
         {
             comboText.color = Color.white;
@@ -1183,6 +1198,11 @@ public class GameManager : MonoBehaviour
     private static string GetCenterHudText(int time, int score)
     {
         return $"<color=#FFF03B><size=132>{time:00}</size></color>\n<color=#FFFFFF><size=34>清浄量</size></color>\n<size=54>{GetScoreHudText(score)}</size>";
+    }
+
+    private string GetStageHudText()
+    {
+        return $"ー{stageManager.CurrentStageName}ー";
     }
 
     private static string GetComboHudText(int combo)
@@ -1522,6 +1542,39 @@ public class GameManager : MonoBehaviour
         return button;
     }
 
+    private static Button CreateIconButton(string name, RectTransform parent, Sprite icon, string fallbackText, Vector2 anchoredPosition, Vector2 size, Color color)
+    {
+        var image = CreatePanel(name, parent, anchoredPosition, size, new Color(1f, 1f, 1f, 0f), true);
+        var inner = CreatePanel("Fill", image.rectTransform, Vector2.zero, size, new Color(1f, 1f, 1f, 0f), false);
+
+        if (icon != null)
+        {
+            inner.sprite = icon;
+            inner.type = Image.Type.Simple;
+            inner.preserveAspect = true;
+            inner.color = Color.white;
+        }
+        else
+        {
+            var label = CreateText("Label", image.rectTransform, fallbackText, Vector2.zero, size, 38, Color.white, TextAnchor.MiddleCenter);
+            var labelOutline = label.GetComponent<Outline>();
+            if (labelOutline != null)
+            {
+                labelOutline.effectColor = new Color(0f, 0.12f, 0.30f, 0.95f);
+                labelOutline.effectDistance = new Vector2(4f, -4f);
+            }
+
+            var labelShadow = label.gameObject.AddComponent<Shadow>();
+            labelShadow.effectColor = new Color(0f, 0f, 0f, 0.45f);
+            labelShadow.effectDistance = new Vector2(4f, -4f);
+            label.transform.SetAsLastSibling();
+        }
+
+        var button = image.gameObject.AddComponent<Button>();
+        button.targetGraphic = inner;
+        return button;
+    }
+
     private static SuctionZoneVisualController CreateSuctionZoneVisual(RectTransform parent, float radius)
     {
         var images = new List<Image>();
@@ -1598,24 +1651,33 @@ public class GameManager : MonoBehaviour
         return controller;
     }
 
-    private static Image CreateBottomVisibilityOverlay(RectTransform parent, Sprite sprite, float alpha, float height, float bottomPadding)
+    private static Image CreateBottomPlayUiBackground(RectTransform parent, Sprite sprite, float alpha, float bottomPadding)
     {
-        var image = CreatePanel("BottomVisibilityOverlay", parent, Vector2.zero, new Vector2(1080f, height), Color.white, false);
+        var size = GetAspectFitWidthSize(sprite, 1080f, 590f);
+        var image = CreatePanel("BottomPlayUiBackground", parent, Vector2.zero, size, Color.white, false);
         var rect = image.rectTransform;
         rect.anchorMin = new Vector2(0f, 0f);
         rect.anchorMax = new Vector2(1f, 0f);
         rect.pivot = new Vector2(0.5f, 0f);
         rect.anchoredPosition = new Vector2(0f, bottomPadding);
-        rect.sizeDelta = new Vector2(0f, height);
-        rect.offsetMin = new Vector2(0f, bottomPadding);
-        rect.offsetMax = new Vector2(0f, bottomPadding + height);
+        rect.sizeDelta = new Vector2(0f, size.y);
 
         image.sprite = sprite;
-        image.type = Image.Type.Sliced;
+        image.type = Image.Type.Simple;
         image.preserveAspect = false;
         image.raycastTarget = false;
-        image.color = GetVisibilityOverlayColor(alpha);
+        image.color = new Color(1f, 1f, 1f, Mathf.Clamp01(alpha));
         return image;
+    }
+
+    private static Vector2 GetAspectFitWidthSize(Sprite sprite, float width, float fallbackHeight)
+    {
+        if (sprite == null || sprite.rect.width <= 0f)
+        {
+            return new Vector2(width, fallbackHeight);
+        }
+
+        return new Vector2(width, width * sprite.rect.height / sprite.rect.width);
     }
 
     private static Image CreateTopVisibilityOverlay(RectTransform parent, Sprite sprite, float alpha, float height, float topPadding)
@@ -1723,7 +1785,7 @@ public class GameManager : MonoBehaviour
 
     private static AirPurifierController CreateAirPurifier(RectTransform parent, Sprite normalSprite, Sprite suctionSprite, Sprite failSprite)
     {
-        var rootImage = CreatePanel("AirPurifier", parent, new Vector2(245f, -610f), new Vector2(594f, 594f), Color.white, false);
+        var rootImage = CreatePanel("AirPurifier", parent, new Vector2(265f, -610f), new Vector2(660f, 660f), Color.white, false);
         rootImage.sprite = normalSprite;
         rootImage.preserveAspect = true;
 
@@ -1734,7 +1796,7 @@ public class GameManager : MonoBehaviour
             CreatePanel("Fallback_Intake", body.rectTransform, new Vector2(0f, 78f), new Vector2(160f, 28f), new Color(0.32f, 0.72f, 1f), false);
         }
 
-        var suctionPoint = CreateRect("SuctionPoint", rootImage.rectTransform, new Vector2(0f, 277.2f), new Vector2(10f, 10f));
+        var suctionPoint = CreateRect("SuctionPoint", rootImage.rectTransform, new Vector2(0f, 308f), new Vector2(10f, 10f));
         var controller = rootImage.gameObject.AddComponent<AirPurifierController>();
         controller.Configure(rootImage.rectTransform, suctionPoint, rootImage, normalSprite, suctionSprite, failSprite);
         return controller;

@@ -181,6 +181,8 @@ MonoBehaviour:
   cityStageBackgroundSprite: {fileID: 21300000, guid: 91d817b9313d44dd79071734379a66e4, type: 3}
   spaceStageBackgroundSprite: {fileID: 21300000, guid: 2073cf9b56a5b4119be0f1e232221515, type: 3}
   bottomVisibilityOverlaySprite: {fileID: 21300000, guid: 58d0ab94fff8740b3abc4ecf8bcb33ab, type: 3}
+  playUiBackgroundSprite: {fileID: -5776593277609878559, guid: 54927a522a3ed49e5ba82b0f0905d2fb, type: 3}
+  fastForwardButtonSprite: {fileID: 3454418410224599792, guid: 2c37f6d54c34543149459b5cd341649c, type: 3}
   bombExplosionSprite: {fileID: 0}
   itemMasterCsv: {fileID: 4900000, guid: 1aca6b44a8b54cd8b47cbf689a1e0ad4, type: 3}
   itemSpriteDatabase: {fileID: 11400000, guid: 9b55e58c608d547e38df9545fef479a8, type: 2}
@@ -195,6 +197,7 @@ MonoBehaviour:
   overlayAlpha: 0.64
   overlayHeight: 820
   overlayBottomPadding: 0
+  playUiBackgroundAlpha: 0.62
 --- !u!4 &242458913
 Transform:
   m_ObjectHideFlags: 0

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -20,6 +21,8 @@ public static class GanbareAirPurifierMvpSceneBuilder
     private const string CityStageBackgroundPath = "Assets/_Project/Art/Backgrounds/Background_City_Aerial.png";
     private const string SpaceStageBackgroundPath = "Assets/_Project/Art/Backgrounds/Background_Space.png";
     private const string BottomVisibilityOverlayPath = "Assets/_Project/Art/UI/BottomVisibilityOverlay.png";
+    private const string PlayUiBackgroundPath = "Assets/_Project/Art/UI/Ui_Back_New.png";
+    private const string FastForwardButtonSpritePath = "Assets/_Project/Art/UI/Ui_2.png";
     private const string ItemMasterCsvPath = "Assets/_Project/Data/CSV/ItemMaster.csv";
     private const string ItemSpriteDatabasePath = "Assets/_Project/Data/ItemSpriteDatabase.asset";
     private const string SfxDatabasePath = "Assets/_Project/Data/SfxDatabase.asset";
@@ -70,6 +73,8 @@ public static class GanbareAirPurifierMvpSceneBuilder
             AssetDatabase.LoadAssetAtPath<Sprite>(CityStageBackgroundPath),
             AssetDatabase.LoadAssetAtPath<Sprite>(SpaceStageBackgroundPath));
         gameManager.ConfigureBottomVisibilityOverlay(AssetDatabase.LoadAssetAtPath<Sprite>(BottomVisibilityOverlayPath));
+        gameManager.ConfigurePlayUiBackground(LoadSpriteAsset(PlayUiBackgroundPath));
+        gameManager.ConfigureFastForwardButtonSprite(LoadSpriteAsset(FastForwardButtonSpritePath));
         gameManager.ConfigureDataAssets(
             AssetDatabase.LoadAssetAtPath<TextAsset>(ItemMasterCsvPath),
             AssetDatabase.LoadAssetAtPath<ItemSpriteDatabase>(ItemSpriteDatabasePath),
@@ -250,5 +255,11 @@ public static class GanbareAirPurifierMvpSceneBuilder
         importer.filterMode = FilterMode.Bilinear;
         importer.maxTextureSize = 2048;
         importer.SaveAndReimport();
+    }
+
+    private static Sprite LoadSpriteAsset(string path)
+    {
+        return AssetDatabase.LoadAssetAtPath<Sprite>(path)
+            ?? AssetDatabase.LoadAllAssetsAtPath(path).OfType<Sprite>().FirstOrDefault();
     }
 }
