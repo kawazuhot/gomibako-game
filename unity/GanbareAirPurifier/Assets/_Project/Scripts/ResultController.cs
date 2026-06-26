@@ -260,7 +260,7 @@ public class ResultController : MonoBehaviour
         switch (reachedStage)
         {
             case PurifierStage.Space:
-                bonuses.Add(new ResultBonus("宇宙到達 Bonus 25000pt", 25000, true));
+                bonuses.Add(new ResultBonus("宇宙到達 Bonus 30000pt", 30000, true));
                 break;
             case PurifierStage.City:
                 bonuses.Add(new ResultBonus("上空到達 Bonus 10000pt", 10000, true));
@@ -351,7 +351,7 @@ public class ResultController : MonoBehaviour
         switch (rank)
         {
             case "SS":
-                return "<color=#FF4B4B>S</color><color=#30A8FF>S</color>";
+                return "<color=#FFD700>SS</color>";
             case "S":
                 return "<color=#FFD700>S</color>";
             case "A":
