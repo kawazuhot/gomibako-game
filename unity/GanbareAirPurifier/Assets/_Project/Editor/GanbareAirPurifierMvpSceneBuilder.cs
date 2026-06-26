@@ -104,7 +104,7 @@ public static class GanbareAirPurifierMvpSceneBuilder
         titleImage.transform.SetAsLastSibling();
 
         var titleLogoSprite = AssetDatabase.LoadAssetAtPath<Sprite>(TitleLogoPath);
-        var titleLogo = CreatePanel("TitleLogo", root, new Vector2(25f, -405f), new Vector2(880f, 424f), Color.white, false);
+        var titleLogo = CreatePanel("TitleLogo", root, new Vector2(25f, -390f), new Vector2(880f, 424f), Color.white, false);
         AnchorTopCenter(titleLogo.rectTransform);
         titleLogo.sprite = titleLogoSprite;
         titleLogo.preserveAspect = true;
