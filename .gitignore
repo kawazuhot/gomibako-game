@@ -12,6 +12,15 @@ UserSettings/
 MemoryCaptures/
 Recordings/
 
+# GitHub Pages WebGL publish output
+![Dd]ocs/
+![Dd]ocs/[Bb]uild/
+![Dd]ocs/[Bb]uild/**
+![Dd]ocs/TemplateData/
+![Dd]ocs/TemplateData/**
+![Dd]ocs/index.html
+![Dd]ocs/.nojekyll
+
 # Unity cache
 .vs/
 .gradle/
