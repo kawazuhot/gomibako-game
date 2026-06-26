@@ -13,6 +13,7 @@ public static class BuildWebGLLocal
     public static void Build()
     {
         RefreshItemSpriteDatabase.Refresh();
+        RefreshSfxDatabase.Refresh();
 
         var scenes = EditorBuildSettings.scenes
             .Where(scene => scene.enabled)
@@ -30,6 +31,7 @@ public static class BuildWebGLLocal
         EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.WebGL, BuildTarget.WebGL);
         PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
         PlayerSettings.WebGL.decompressionFallback = true;
+        WebGLAssetOptimizer.Apply();
 
         var options = new BuildPlayerOptions
         {
@@ -39,6 +41,7 @@ public static class BuildWebGLLocal
             options = BuildOptions.None
         };
 
+        Debug.Log($"[Lifecycle] WebGLBuildStarted output={outputPath}");
         Debug.Log($"[BuildWebGLLocal] Building WebGL to: {outputPath}");
         Debug.Log($"[BuildWebGLLocal] Scenes: {string.Join(", ", scenes)}");
 

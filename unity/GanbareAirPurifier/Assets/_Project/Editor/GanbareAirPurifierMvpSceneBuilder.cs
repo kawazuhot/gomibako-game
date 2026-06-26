@@ -23,6 +23,11 @@ public static class GanbareAirPurifierMvpSceneBuilder
     private const string BottomVisibilityOverlayPath = "Assets/_Project/Art/UI/BottomVisibilityOverlay.png";
     private const string PlayUiBackgroundPath = "Assets/_Project/Art/UI/Ui_Back_New.png";
     private const string FastForwardButtonSpritePath = "Assets/_Project/Art/UI/Ui_2.png";
+    private const string ResultRankDPath = "Assets/_Project/Art/Result/result_rank_d.png";
+    private const string ResultRankCbPath = "Assets/_Project/Art/Result/result_rank_cb.png";
+    private const string ResultRankAPath = "Assets/_Project/Art/Result/result_rank_a.png";
+    private const string ResultRankSPath = "Assets/_Project/Art/Result/result_rank_s.png";
+    private const string ResultRankSsPath = "Assets/_Project/Art/Result/result_rank_ss.png";
     private const string ItemMasterCsvPath = "Assets/_Project/Data/CSV/ItemMaster.csv";
     private const string ItemSpriteDatabasePath = "Assets/_Project/Data/ItemSpriteDatabase.asset";
     private const string SfxDatabasePath = "Assets/_Project/Data/SfxDatabase.asset";
@@ -75,6 +80,12 @@ public static class GanbareAirPurifierMvpSceneBuilder
         gameManager.ConfigureBottomVisibilityOverlay(AssetDatabase.LoadAssetAtPath<Sprite>(BottomVisibilityOverlayPath));
         gameManager.ConfigurePlayUiBackground(LoadSpriteAsset(PlayUiBackgroundPath));
         gameManager.ConfigureFastForwardButtonSprite(LoadSpriteAsset(FastForwardButtonSpritePath));
+        gameManager.ConfigureResultRankSprites(
+            LoadSpriteAsset(ResultRankDPath),
+            LoadSpriteAsset(ResultRankCbPath),
+            LoadSpriteAsset(ResultRankAPath),
+            LoadSpriteAsset(ResultRankSPath),
+            LoadSpriteAsset(ResultRankSsPath));
         gameManager.ConfigureDataAssets(
             AssetDatabase.LoadAssetAtPath<TextAsset>(ItemMasterCsvPath),
             AssetDatabase.LoadAssetAtPath<ItemSpriteDatabase>(ItemSpriteDatabasePath),
@@ -159,6 +170,7 @@ public static class GanbareAirPurifierMvpSceneBuilder
         ConfigureSpriteImport(CityStageBackgroundPath);
         ConfigureSpriteImport(SpaceStageBackgroundPath);
         ConfigureSpriteImport(BottomVisibilityOverlayPath);
+        ConfigureSpriteImportsInFolder("Assets/_Project/Art/Result");
         ConfigureSpriteImportsInFolder("Assets/_Project/Art/Items/Home");
         ConfigureSpriteImportsInFolder("Assets/_Project/Art/Items/Street");
         ConfigureSpriteImportsInFolder("Assets/_Project/Art/Items/City");

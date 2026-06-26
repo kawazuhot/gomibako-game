@@ -37,6 +37,7 @@ public class TitleSceneController : MonoBehaviour
     private void Awake()
     {
         Time.timeScale = 1f;
+        Debug.Log($"[Lifecycle] TitleAwake scene={SceneManager.GetActiveScene().name} t={Time.realtimeSinceStartup:0.00}");
         ApplyDefaultFont();
 
         if (fadePanel != null)
@@ -49,6 +50,7 @@ public class TitleSceneController : MonoBehaviour
 
     private void Start()
     {
+        Debug.Log($"[Lifecycle] TitleLoaded scene={SceneManager.GetActiveScene().name} t={Time.realtimeSinceStartup:0.00}");
         PlayIdleAnimations();
     }
 
@@ -75,6 +77,7 @@ public class TitleSceneController : MonoBehaviour
     private void StartGame()
     {
         isTransitioning = true;
+        Debug.Log($"[Lifecycle] GameplayStartRequested from=TitleTap target={gameplaySceneName} t={Time.realtimeSinceStartup:0.00}");
         logoBreathTween?.Kill();
         startTextTween?.Kill();
 

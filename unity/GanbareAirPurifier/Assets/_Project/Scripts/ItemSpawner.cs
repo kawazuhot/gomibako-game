@@ -8,15 +8,18 @@ public class ItemSpawner : MonoBehaviour
     [SerializeField] private float moveDuration = 6.0f;
     [SerializeField] private float spawnX = 650f;
     [SerializeField] private float despawnX = -650f;
-    [SerializeField] private float topLaneY = 280f;
-    [SerializeField] private float bottomLaneY = -80f;
+    [SerializeField] private float topLaneY = 270f;
+    [SerializeField] private float bottomLaneY = -90f;
     [SerializeField] private float laneRandomYRange = 60f;
     [SerializeField] private float bombSpawnRate = 0.10f;
     [SerializeField] private float minAllowedSpawnInterval = 0.22f;
+    [SerializeField] private int initialPoolSize = 28;
+    [SerializeField] private bool debugSpawnSelectionLog = false;
 
     private GameManager gameManager;
     private RectTransform itemLayer;
     private ItemController itemTemplate;
+    private ComponentPool<ItemController> itemPool;
     private ItemData bombData;
     private float topLaneSpawnTimer;
     private float bottomLaneSpawnTimer;
@@ -28,8 +31,18 @@ public class ItemSpawner : MonoBehaviour
         itemLayer = layer;
         itemTemplate = template;
         bombData = ItemData.CreateBomb(ItemDatabase.LoadSpriteOrNull("Item_Bomb"));
+        itemPool = new ComponentPool<ItemController>(
+            CreatePooledItem,
+            initialPoolSize,
+            item => item.gameObject.SetActive(true),
+            item =>
+            {
+                item.ResetForPool();
+                item.gameObject.SetActive(false);
+            });
         topLaneSpawnTimer = 0.15f;
         bottomLaneSpawnTimer = 0.55f;
+        Debug.Log($"[ItemSpawner] Item pool initialized. InitialSize={initialPoolSize}");
     }
 
     public void BeginCountdownSpawn()
@@ -76,12 +89,26 @@ public class ItemSpawner : MonoBehaviour
         }
 
         var data = spawnBomb ? bombData : ChooseWeightedItem(pool);
-        Debug.Log($"[ItemSpawner] Selected item: {data.Id} / {data.DisplayName} / {(data.IsBomb ? "Bomb" : "Lv" + data.RequiredLevel)} / {data.SpriteName} / {(data.Sprite != null ? "sprite found" : "placeholder used")}");
-        var item = Instantiate(itemTemplate, itemLayer);
-        item.gameObject.SetActive(true);
+        if (debugSpawnSelectionLog)
+        {
+            Debug.Log($"[ItemSpawner] Selected item: {data.Id} / {data.DisplayName} / {(data.IsBomb ? "Bomb" : "Lv" + data.RequiredLevel)} / {data.SpriteName} / {(data.Sprite != null ? "sprite found" : "placeholder used")}");
+        }
+        var item = itemPool.Get();
         var duration = Mathf.Max(2.2f, moveDuration - gameManager.CurrentSuctionLevel * 0.18f);
         item.Initialize(data, gameManager.CurrentSuctionLevel, new Vector2(spawnX, laneY), despawnX, duration, gameManager.HandleItemMissed);
         gameManager.RegisterItem(item);
+    }
+
+    public void ReleaseItem(ItemController item)
+    {
+        itemPool?.Release(item);
+    }
+
+    private ItemController CreatePooledItem()
+    {
+        var item = Instantiate(itemTemplate, itemLayer);
+        item.gameObject.SetActive(false);
+        return item;
     }
 
     private float GetNextSpawnInterval()

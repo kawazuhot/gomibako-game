@@ -1,4 +1,5 @@
 using DG.Tweening;
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -8,9 +9,29 @@ public class FloatingScoreText : MonoBehaviour
     [SerializeField] private CanvasGroup canvasGroup;
     [SerializeField] private Text scoreText;
     [SerializeField] private Text comboText;
+    private Sequence sequence;
+    private Action<FloatingScoreText> onComplete;
 
-    public void Play(int score, int combo, float comboMultiplier, Vector2 anchoredPosition, Font font)
+    public void Prepare(Font font)
     {
+        if (rectTransform == null)
+        {
+            rectTransform = GetComponent<RectTransform>();
+        }
+
+        if (canvasGroup == null)
+        {
+            canvasGroup = GetComponent<CanvasGroup>();
+        }
+
+        EnsureTextViews(font);
+        ResetVisualState();
+    }
+
+    public void Play(int score, int combo, float comboMultiplier, Vector2 anchoredPosition, Font font, Action<FloatingScoreText> completedCallback)
+    {
+        ResetVisualState();
+        onComplete = completedCallback;
         if (rectTransform == null)
         {
             rectTransform = GetComponent<RectTransform>();
@@ -23,11 +44,24 @@ public class FloatingScoreText : MonoBehaviour
 
         var hasComboBonus = combo >= 5;
         var comboScale = GetComboDisplayScale(combo);
-        scoreText = CreateText("ScoreText", rectTransform, font, $"+{score}", hasComboBonus ? new Vector2(0f, 34f) : Vector2.zero, new Vector2(340f, 70f), 48, new Color(1f, 0.92f, 0.18f));
+        EnsureTextViews(font);
+
+        scoreText.gameObject.SetActive(true);
+        scoreText.text = $"+{score}";
+        scoreText.rectTransform.anchoredPosition = hasComboBonus ? new Vector2(0f, 34f) : Vector2.zero;
+        scoreText.rectTransform.sizeDelta = new Vector2(340f, 70f);
+        scoreText.fontSize = 48;
+        scoreText.color = new Color(1f, 0.92f, 0.18f);
+
+        comboText.gameObject.SetActive(hasComboBonus);
         if (hasComboBonus)
         {
             var comboFontSize = Mathf.RoundToInt(44f * comboScale);
-            comboText = CreateText("ComboText", rectTransform, font, $"{combo}Combo!! ×{comboMultiplier:0.0}", new Vector2(0f, -34f), new Vector2(430f, 78f), comboFontSize, GetComboColor(combo));
+            comboText.text = $"{combo}Combo!! ×{comboMultiplier:0.0}";
+            comboText.rectTransform.anchoredPosition = new Vector2(0f, -34f);
+            comboText.rectTransform.sizeDelta = new Vector2(430f, 78f);
+            comboText.fontSize = comboFontSize;
+            comboText.color = GetComboColor(combo);
             if (combo >= 100)
             {
                 comboText.DOColor(new Color(0.12f, 0.95f, 1f), 0.12f)
@@ -36,8 +70,8 @@ public class FloatingScoreText : MonoBehaviour
             }
         }
 
-        var startOffset = new Vector2(Random.Range(-18f, 18f), Random.Range(4f, 18f));
-        var moveOffset = new Vector2(Random.Range(-18f, 18f), Random.Range(54f, 76f));
+        var startOffset = new Vector2(UnityEngine.Random.Range(-18f, 18f), UnityEngine.Random.Range(4f, 18f));
+        var moveOffset = new Vector2(UnityEngine.Random.Range(-18f, 18f), UnityEngine.Random.Range(54f, 76f));
 
         rectTransform.anchoredPosition = anchoredPosition + startOffset;
         rectTransform.localScale = Vector3.one * 0.5f;
@@ -48,21 +82,93 @@ public class FloatingScoreText : MonoBehaviour
 
         var peakScale = hasComboBonus ? Mathf.Min(1.38f, 1.25f + (comboScale - 1f) * 0.18f) : 1.22f;
         var settleScale = hasComboBonus ? Mathf.Min(1.12f, 1f + (comboScale - 1f) * 0.08f) : 1f;
-        var sequence = DOTween.Sequence();
+        sequence = DOTween.Sequence();
         sequence.Append(rectTransform.DOScale(peakScale, 0.16f).SetEase(Ease.OutBack));
         sequence.Append(rectTransform.DOScale(settleScale, 0.12f).SetEase(Ease.OutQuad));
         if (hasComboBonus)
         {
-            sequence.Append(rectTransform.DORotate(new Vector3(0f, 0f, Random.Range(-4f, 4f)), 0.06f).SetEase(Ease.InOutSine));
+            sequence.Append(rectTransform.DORotate(new Vector3(0f, 0f, UnityEngine.Random.Range(-4f, 4f)), 0.06f).SetEase(Ease.InOutSine));
             sequence.Append(rectTransform.DORotate(Vector3.zero, 0.08f).SetEase(Ease.InOutSine));
         }
         sequence.Join(rectTransform.DOAnchorPos(rectTransform.anchoredPosition + moveOffset, 0.58f).SetEase(Ease.OutCubic));
         sequence.Append(canvasGroup.DOFade(0f, 0.26f).SetEase(Ease.InQuad));
         sequence.OnComplete(() =>
         {
-            comboText?.DOKill();
-            Destroy(gameObject);
+            var callback = onComplete;
+            onComplete = null;
+            callback?.Invoke(this);
         });
+    }
+
+    public void ResetForPool()
+    {
+        ResetVisualState();
+        onComplete = null;
+        gameObject.SetActive(false);
+    }
+
+    private void ResetVisualState()
+    {
+        sequence?.Kill();
+        sequence = null;
+        rectTransform?.DOKill();
+        canvasGroup?.DOKill();
+        scoreText?.DOKill();
+        comboText?.DOKill();
+
+        if (rectTransform == null)
+        {
+            rectTransform = GetComponent<RectTransform>();
+        }
+
+        if (canvasGroup == null)
+        {
+            canvasGroup = GetComponent<CanvasGroup>();
+        }
+
+        if (rectTransform != null)
+        {
+            rectTransform.localScale = Vector3.one;
+            rectTransform.localRotation = Quaternion.identity;
+        }
+
+        if (canvasGroup != null)
+        {
+            canvasGroup.alpha = 1f;
+            canvasGroup.blocksRaycasts = false;
+            canvasGroup.interactable = false;
+        }
+
+        if (scoreText != null)
+        {
+            scoreText.gameObject.SetActive(false);
+        }
+
+        if (comboText != null)
+        {
+            comboText.gameObject.SetActive(false);
+        }
+    }
+
+    private void EnsureTextViews(Font font)
+    {
+        if (scoreText == null)
+        {
+            scoreText = CreateText("ScoreText", rectTransform, font, string.Empty, Vector2.zero, new Vector2(340f, 70f), 48, new Color(1f, 0.92f, 0.18f));
+        }
+        else
+        {
+            scoreText.font = font;
+        }
+
+        if (comboText == null)
+        {
+            comboText = CreateText("ComboText", rectTransform, font, string.Empty, new Vector2(0f, -34f), new Vector2(430f, 78f), 44, GetComboColor(0));
+        }
+        else
+        {
+            comboText.font = font;
+        }
     }
 
     private static Text CreateText(string name, RectTransform parent, Font font, string value, Vector2 anchoredPosition, Vector2 size, int fontSize, Color color)

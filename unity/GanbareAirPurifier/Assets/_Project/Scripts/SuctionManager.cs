@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine;
 
@@ -15,6 +16,7 @@ public class SuctionManager : MonoBehaviour
 
     private GameManager gameManager;
     private AirPurifierController airPurifier;
+    private readonly List<Tween> activeSequences = new List<Tween>();
     private int activeSuctionCount;
 
     public bool IsBusy => activeSuctionCount > 0;
@@ -64,11 +66,16 @@ public class SuctionManager : MonoBehaviour
         rect.localScale = Vector3.one;
 
         var sequence = DOTween.Sequence();
+        RegisterSequence(sequence);
         sequence.Append(rect.DOAnchorPos(start + new Vector2(0f, popHeight), popDuration).SetEase(Ease.OutQuad));
         sequence.Append(rect.DOAnchorPos(airPurifier.SuctionPoint, successSuckDuration).SetEase(Ease.InBack));
         sequence.Join(rect.DORotate(new Vector3(0f, 0f, 360f), successSuckDuration, RotateMode.FastBeyond360));
         sequence.Append(rect.DOScale(0.05f, successShrinkDuration).SetEase(Ease.InQuad));
-        sequence.OnComplete(() => onComplete?.Invoke());
+        sequence.OnComplete(() =>
+        {
+            activeSequences.Remove(sequence);
+            onComplete?.Invoke();
+        });
     }
 
     private void PlayFailure(ItemController item, Action onComplete)
@@ -82,13 +89,18 @@ public class SuctionManager : MonoBehaviour
         var flyTarget = front + new Vector2(420f * flyDirection, 120f);
 
         var sequence = DOTween.Sequence();
+        RegisterSequence(sequence);
         sequence.Append(rect.DOAnchorPos(start + new Vector2(0f, popHeight), popDuration).SetEase(Ease.OutQuad));
         sequence.Append(rect.DOAnchorPos(front, failApproachDuration).SetEase(Ease.OutCubic));
         sequence.AppendCallback(() => airPurifier.PlayFailAnimation());
         sequence.Append(rect.DOAnchorPos(flyTarget, failFlyDuration).SetEase(Ease.OutBack));
         sequence.Join(rect.DORotate(new Vector3(0f, 0f, 540f * flyDirection), failFlyDuration, RotateMode.FastBeyond360));
         sequence.Join(rect.DOScale(0.85f, failFlyDuration));
-        sequence.OnComplete(() => onComplete?.Invoke());
+        sequence.OnComplete(() =>
+        {
+            activeSequences.Remove(sequence);
+            onComplete?.Invoke();
+        });
     }
 
     private void Complete(ItemController item, bool success)
@@ -105,6 +117,7 @@ public class SuctionManager : MonoBehaviour
         var explosionPosition = airPurifier.SuctionPoint + new Vector2(0f, 48f);
 
         var sequence = DOTween.Sequence();
+        RegisterSequence(sequence);
         sequence.Append(rect.DOAnchorPos(start + new Vector2(0f, popHeight), popDuration).SetEase(Ease.OutQuad));
         sequence.Append(rect.DOAnchorPos(explosionPosition, bombApproachDuration).SetEase(Ease.InCubic));
         sequence.AppendCallback(() =>
@@ -113,12 +126,35 @@ public class SuctionManager : MonoBehaviour
             gameManager.PlayBombExplosionFeedback(explosionPosition);
         });
         sequence.AppendInterval(bombExplosionDuration);
-        sequence.OnComplete(() => onComplete?.Invoke());
+        sequence.OnComplete(() =>
+        {
+            activeSequences.Remove(sequence);
+            onComplete?.Invoke();
+        });
     }
 
     private void CompleteBomb(ItemController item)
     {
         activeSuctionCount = Mathf.Max(0, activeSuctionCount - 1);
         gameManager.ResolveBomb(item);
+    }
+
+    public void CancelAll()
+    {
+        for (var i = activeSequences.Count - 1; i >= 0; i--)
+        {
+            activeSequences[i]?.Kill();
+        }
+
+        activeSequences.Clear();
+        activeSuctionCount = 0;
+    }
+
+    private void RegisterSequence(Tween sequence)
+    {
+        if (sequence != null)
+        {
+            activeSequences.Add(sequence);
+        }
     }
 }

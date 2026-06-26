@@ -40,6 +40,7 @@ public class ItemController : MonoBehaviour
 
     public void Initialize(ItemData data, int currentSuctionLevel, Vector2 startPosition, float endX, float moveDuration, Action<ItemController> missedCallback)
     {
+        KillTweens();
         Data = data;
         IsResolving = false;
         HasRewardApplied = false;
@@ -83,7 +84,7 @@ public class ItemController : MonoBehaviour
 
         if (labelText != null)
         {
-            labelText.text = data.IsBomb ? "BOMB" : $"{data.DisplayName}\nLv{data.RequiredLevel}";
+            labelText.text = data.IsBomb ? "BOMB" : $"{data.DisplayName}\nLv.{data.RequiredLevel}";
             labelText.enabled = !hasSprite;
         }
 
@@ -126,7 +127,7 @@ public class ItemController : MonoBehaviour
     {
         var requiredLevel = data.RequiredLevel;
         var badgeColor = GetLevelBadgeColor(requiredLevel);
-        var badgeText = data.IsBomb ? "!!" : $"★ Lv{requiredLevel}";
+        var badgeText = data.IsBomb ? "!!" : FormatLevelBadgeText(requiredLevel);
         if (levelBadgeImage != null)
         {
             levelBadgeImage.enabled = true;
@@ -145,8 +146,14 @@ public class ItemController : MonoBehaviour
             levelBadgeText.color = Color.white;
             levelBadgeText.fontSize = data.IsBomb ? 34 : 28;
             levelBadgeText.fontStyle = FontStyle.Bold;
+            levelBadgeText.supportRichText = true;
             levelBadgeText.rectTransform.SetAsLastSibling();
         }
+    }
+
+    private static string FormatLevelBadgeText(int requiredLevel)
+    {
+        return $"Lv.<size=38><b>{requiredLevel}</b></size>";
     }
 
     public void SetMoveSpeedMultiplier(float multiplier)
@@ -281,7 +288,66 @@ public class ItemController : MonoBehaviour
     public void KillTweens()
     {
         moveTween?.Kill();
+        moveTween = null;
         StopBreathingMotion();
         rectTransform?.DOKill();
+    }
+
+    public void ResetForPool()
+    {
+        KillTweens();
+        Data = null;
+        IsResolving = false;
+        HasRewardApplied = false;
+        onMissed = null;
+
+        if (rectTransform == null)
+        {
+            rectTransform = GetComponent<RectTransform>();
+        }
+
+        if (rectTransform != null)
+        {
+            rectTransform.anchoredPosition = Vector2.zero;
+            rectTransform.localScale = Vector3.one;
+            rectTransform.localRotation = Quaternion.identity;
+            rectTransform.sizeDelta = normalSize;
+        }
+
+        if (fillImage != null)
+        {
+            fillImage.sprite = null;
+            fillImage.color = Color.white;
+            fillImage.rectTransform.localScale = Vector3.one;
+            fillImage.rectTransform.localRotation = Quaternion.identity;
+            fillImage.rectTransform.sizeDelta = normalFillSize;
+        }
+
+        if (borderImage != null)
+        {
+            borderImage.color = Color.white;
+        }
+
+        if (labelText != null)
+        {
+            labelText.text = string.Empty;
+            labelText.enabled = false;
+        }
+
+        if (levelBadgeImage != null)
+        {
+            levelBadgeImage.enabled = false;
+        }
+
+        if (levelBadgeText != null)
+        {
+            levelBadgeText.text = string.Empty;
+            levelBadgeText.enabled = false;
+        }
+
+        if (outline != null)
+        {
+            outline.enabled = false;
+        }
     }
 }

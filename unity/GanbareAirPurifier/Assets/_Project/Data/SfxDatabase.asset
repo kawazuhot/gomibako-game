@@ -55,3 +55,9 @@ MonoBehaviour:
     clip: {fileID: 8300000, guid: 2653c16705ea64a439c214d938cdd0ca, type: 3}
   - key: Wrong
     clip: {fileID: 8300000, guid: 01a6665d1499c477dbcb966ff890ed1a, type: 3}
+  - key: sfx_result_rank_reveal
+    clip: {fileID: 8300000, guid: 967975e725a544ed9adcd36f2ed76d48, type: 3}
+  - key: sfx_result_score_start
+    clip: {fileID: 8300000, guid: 227329c66a0ea47abaf5bcb291faba90, type: 3}
+  - key: sfx_timeup_whistle
+    clip: {fileID: 8300000, guid: e92eddc96c6ce40a99d60d24e9f6b7d7, type: 3}

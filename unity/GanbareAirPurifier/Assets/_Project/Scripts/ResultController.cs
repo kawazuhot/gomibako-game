@@ -7,6 +7,9 @@ using UnityEngine.UI;
 
 public class ResultController : MonoBehaviour
 {
+    private const int RoundedPanelTextureSize = 48;
+    private const int RoundedPanelRadius = 12;
+
     private class ResultBonus
     {
         public string DisplayName;
@@ -23,7 +26,24 @@ public class ResultController : MonoBehaviour
 
     [Header("Fade")]
     [SerializeField] private float fadeDuration = 1.2f;
-    [SerializeField, Range(0f, 1f)] private float fadeAlpha = 0.76f;
+    [SerializeField] private float resultImageFadeDuration = 1.2f;
+    [SerializeField] private float resultImageHoldDuration = 1.0f;
+    [SerializeField] private float resultDarkFadeDuration = 0.35f;
+    [SerializeField, Range(0f, 1f)] private float resultDarkOverlayAlpha = 0.45f;
+    [SerializeField] private float scoreItemInterval = 0.3f;
+    [SerializeField] private float rankRevealDelay = 0.6f;
+    [SerializeField] private float rankRevealFadeDuration = 0.24f;
+    [SerializeField] private float rankRevealPopDuration = 0.32f;
+    [SerializeField] private float rankRevealSettleDuration = 0.16f;
+    [SerializeField] private float rankRevealStartScale = 0.6f;
+    [SerializeField] private float rankRevealPopScale = 1.35f;
+
+    [Header("Rank Result Images")]
+    [SerializeField] private Sprite resultRankD;
+    [SerializeField] private Sprite resultRankCb;
+    [SerializeField] private Sprite resultRankA;
+    [SerializeField] private Sprite resultRankS;
+    [SerializeField] private Sprite resultRankSs;
 
     [Header("Rank Thresholds")]
     [SerializeField] private int rankCThreshold = 50000;
@@ -40,6 +60,8 @@ public class ResultController : MonoBehaviour
 
     private RectTransform root;
     private Image fadePanel;
+    private Image resultRankBackground;
+    private Image resultDarkOverlay;
     private Image backgroundPanel;
     private Text titleText;
     private Text normalScoreText;
@@ -48,8 +70,12 @@ public class ResultController : MonoBehaviour
     private Text rankText;
     private Font uiFont;
     private readonly List<Text> bonusRows = new List<Text>();
+    private static Sprite roundedPanelSprite;
     private Coroutine resultRoutine;
     private bool isTransitioning;
+    private bool isResultSequencePlaying;
+    private bool hasPlayedResultScoreStartSe;
+    private bool hasPlayedResultRankRevealSe;
 
     public void Configure(RectTransform resultRoot, Font font)
     {
@@ -58,8 +84,24 @@ public class ResultController : MonoBehaviour
         BuildUi();
     }
 
+    public void ConfigureRankSprites(Sprite rankD, Sprite rankCb, Sprite rankA, Sprite rankS, Sprite rankSs)
+    {
+        resultRankD = rankD;
+        resultRankCb = rankCb;
+        resultRankA = rankA;
+        resultRankS = rankS;
+        resultRankSs = rankSs;
+    }
+
     public void ShowResult(int normalScore, int reachedLevel, PurifierStage reachedStage, int maxCombo, int mistakeCount, int bombHitCount)
     {
+        Debug.Log($"[Lifecycle] ResultShown controller=ResultController score={normalScore} reachedLevel={reachedLevel} reachedStage={reachedStage} maxCombo={maxCombo} mistakes={mistakeCount} bombs={bombHitCount} t={Time.realtimeSinceStartup:0.00}");
+
+        if (isResultSequencePlaying)
+        {
+            return;
+        }
+
         if (root == null)
         {
             root = GetComponent<RectTransform>();
@@ -79,6 +121,31 @@ public class ResultController : MonoBehaviour
         resultRoutine = StartCoroutine(PlayResult(normalScore, reachedLevel, reachedStage, maxCombo, mistakeCount, bombHitCount));
     }
 
+    private void OnDisable()
+    {
+        StopResultRoutine();
+    }
+
+    private void OnDestroy()
+    {
+        StopResultRoutine();
+    }
+
+    private void StopResultRoutine()
+    {
+        if (resultRoutine != null)
+        {
+            StopCoroutine(resultRoutine);
+            resultRoutine = null;
+        }
+
+        isResultSequencePlaying = false;
+        fadePanel?.DOKill();
+        resultRankBackground?.DOKill();
+        resultDarkOverlay?.DOKill();
+        backgroundPanel?.DOKill();
+    }
+
     private void BuildUi()
     {
         if (root == null || fadePanel != null)
@@ -86,66 +153,103 @@ public class ResultController : MonoBehaviour
             return;
         }
 
-        fadePanel = CreatePanel("ResultFadePanel", root, Vector2.zero, new Vector2(1080f, 1920f), new Color(0f, 0f, 0f, 0f), true);
-        StretchToParent(fadePanel.rectTransform);
+        resultRankBackground = CreatePanel("ResultRankBackground", root, Vector2.zero, new Vector2(1080f, 1920f), new Color(1f, 1f, 1f, 0f), false);
+        StretchToParent(resultRankBackground.rectTransform);
+        resultRankBackground.preserveAspect = true;
+        resultRankBackground.gameObject.AddComponent<AspectFillImage>();
+        resultRankBackground.gameObject.SetActive(false);
 
-        backgroundPanel = CreatePanel("ResultBackground", root, Vector2.zero, new Vector2(880f, 1160f), new Color(0.04f, 0.08f, 0.14f, 0.86f), false);
-        var backgroundOutline = backgroundPanel.gameObject.AddComponent<Outline>();
-        backgroundOutline.effectColor = new Color(1f, 1f, 1f, 0.9f);
-        backgroundOutline.effectDistance = new Vector2(8f, -8f);
+        resultDarkOverlay = CreatePanel("ResultDarkOverlay", root, Vector2.zero, new Vector2(1080f, 1920f), new Color(0f, 0f, 0f, 0f), false);
+        StretchToParent(resultDarkOverlay.rectTransform);
+        resultDarkOverlay.gameObject.SetActive(false);
+
+        backgroundPanel = CreatePanel("ResultScoreRoot", root, Vector2.zero, new Vector2(900f, 1160f), new Color(0f, 0f, 0f, 0f), false);
         backgroundPanel.gameObject.SetActive(false);
 
         titleText = CreateText("ResultTitleText", backgroundPanel.rectTransform, "清浄リザルト", new Vector2(0f, 470f), new Vector2(780f, 110f), 58, new Color(1f, 0.95f, 0.24f), TextAnchor.MiddleCenter);
-        normalScoreText = CreateText("ResultNormalScoreText", backgroundPanel.rectTransform, string.Empty, new Vector2(0f, 330f), new Vector2(760f, 82f), 42, Color.white, TextAnchor.MiddleCenter);
-        bonusContainer = CreateRect("ResultBonusContainer", backgroundPanel.rectTransform, new Vector2(0f, 80f), new Vector2(760f, 330f));
-        totalScoreText = CreateText("ResultTotalScoreText", backgroundPanel.rectTransform, string.Empty, new Vector2(0f, -220f), new Vector2(760f, 92f), 48, new Color(0.54f, 0.94f, 1f), TextAnchor.MiddleCenter);
-        rankText = CreateText("ResultRankText", backgroundPanel.rectTransform, string.Empty, new Vector2(0f, -350f), new Vector2(820f, 132f), 68, new Color(1f, 0.42f, 0.18f), TextAnchor.MiddleCenter);
+        normalScoreText = CreateText("ResultNormalScoreText", backgroundPanel.rectTransform, string.Empty, new Vector2(0f, 335f), new Vector2(780f, 82f), 44, Color.white, TextAnchor.MiddleCenter);
+        bonusContainer = CreateRect("ResultInfoContainer", backgroundPanel.rectTransform, new Vector2(0f, 95f), new Vector2(780f, 330f));
+        totalScoreText = CreateText("ResultTotalScoreText", backgroundPanel.rectTransform, string.Empty, new Vector2(0f, -210f), new Vector2(780f, 92f), 50, new Color(0.54f, 0.94f, 1f), TextAnchor.MiddleCenter);
+        rankText = CreateText("ResultRankText", backgroundPanel.rectTransform, string.Empty, new Vector2(0f, -340f), new Vector2(900f, 172f), 104, new Color(1f, 0.42f, 0.18f), TextAnchor.MiddleCenter);
         restartButton = CreateButton("ResultRestartButton", backgroundPanel.rectTransform, "リスタート", new Vector2(0f, -485f), new Vector2(520f, 86f), new Color(0.18f, 0.62f, 1f));
         backToTitleButton = CreateButton("ResultBackToTitleButton", backgroundPanel.rectTransform, "タイトルに戻る", new Vector2(0f, -590f), new Vector2(520f, 86f), new Color(0.20f, 0.78f, 0.48f));
         restartButton.onClick.AddListener(OnRestartButtonClicked);
         backToTitleButton.onClick.AddListener(OnBackToTitleButtonClicked);
         SetResultButtonsVisible(false);
+
+        fadePanel = CreatePanel("ResultFadePanel", root, Vector2.zero, new Vector2(1080f, 1920f), new Color(0f, 0f, 0f, 0f), true);
+        StretchToParent(fadePanel.rectTransform);
+        fadePanel.rectTransform.SetAsLastSibling();
+        fadePanel.gameObject.SetActive(false);
     }
 
     private IEnumerator PlayResult(int normalScore, int reachedLevel, PurifierStage reachedStage, int maxCombo, int mistakeCount, int bombHitCount)
     {
         BuildUi();
         ResetViews();
+        isResultSequencePlaying = true;
+
+        var bonuses = BuildBonuses(reachedLevel, reachedStage, maxCombo, mistakeCount, bombHitCount);
+        var bonusTotal = 0;
+        for (var i = 0; i < bonuses.Count; i++)
+        {
+            if (bonuses[i].Achieved)
+            {
+                bonusTotal += bonuses[i].Score;
+            }
+        }
+
+        var finalScore = normalScore + bonusTotal;
+        var rank = GetRank(finalScore);
+        SetRankBackground(rank);
 
         fadePanel.gameObject.SetActive(true);
         fadePanel.DOKill();
         fadePanel.color = new Color(0f, 0f, 0f, 0f);
-        yield return TweenToYield(fadePanel.DOFade(fadeAlpha, fadeDuration).SetEase(Ease.OutQuad).SetUpdate(true));
+        yield return TweenToYield(fadePanel.DOFade(1f, Mathf.Max(0.01f, fadeDuration)).SetEase(Ease.OutQuad).SetUpdate(true));
+
+        resultRankBackground.gameObject.SetActive(true);
+        resultRankBackground.color = Color.white;
+        resultRankBackground.GetComponent<AspectFillImage>()?.Apply();
+        yield return TweenToYield(fadePanel.DOFade(0f, Mathf.Max(0.01f, resultImageFadeDuration)).SetEase(Ease.InOutSine).SetUpdate(true));
+        fadePanel.gameObject.SetActive(false);
+
+        yield return new WaitForSecondsRealtime(Mathf.Max(0f, resultImageHoldDuration));
+
+        resultDarkOverlay.gameObject.SetActive(true);
+        resultDarkOverlay.DOKill();
+        resultDarkOverlay.color = new Color(0f, 0f, 0f, 0f);
+        yield return TweenToYield(resultDarkOverlay.DOFade(Mathf.Clamp01(resultDarkOverlayAlpha), Mathf.Max(0.01f, resultDarkFadeDuration)).SetEase(Ease.OutQuad).SetUpdate(true));
 
         backgroundPanel.gameObject.SetActive(true);
-        yield return PlayTextIn(titleText, 0.16f);
+        PlayResultScoreStartSeOnce();
 
-        normalScoreText.text = $"清浄スコア  {normalScore:N0}";
-        yield return PlayTextIn(normalScoreText, 0.4f);
+        normalScoreText.text = $"清浄量  {normalScore:N0}pt";
+        yield return PlayTextIn(normalScoreText, scoreItemInterval);
 
-        var bonuses = BuildBonuses(reachedLevel, reachedStage, maxCombo, mistakeCount, bombHitCount);
-        var bonusTotal = 0;
-        foreach (var bonus in bonuses)
+        var infoRows = new[]
         {
-            if (!bonus.Achieved)
-            {
-                continue;
-            }
-
-            bonusTotal += bonus.Score;
-            var row = CreateBonusRow(bonusRows.Count, $"{bonus.DisplayName}  +{bonus.Score:N0}");
+            $"最大コンボ  {maxCombo:N0}",
+            $"到達ステージ  {GetStageDisplayName(reachedStage)}",
+            $"到達Lv  {reachedLevel}",
+        };
+        for (var i = 0; i < infoRows.Length; i++)
+        {
+            var row = CreateBonusRow(bonusRows.Count, infoRows[i]);
             bonusRows.Add(row);
-            yield return PlayTextIn(row, 0.25f);
+            yield return PlayTextIn(row, scoreItemInterval);
         }
 
-        var finalScore = normalScore + bonusTotal;
         totalScoreText.text = $"TOTAL  {finalScore:N0}";
-        yield return PlayTextIn(totalScoreText, 0.4f);
+        yield return PlayTextIn(totalScoreText, scoreItemInterval);
 
-        rankText.text = $"清浄RANK {GetRank(finalScore)}";
-        yield return PlayTextIn(rankText, 0.2f, 1.18f);
+        yield return new WaitForSecondsRealtime(Mathf.Max(0f, rankRevealDelay));
+        rankText.text = $"清浄RANK {rank}";
+        yield return PlayRankReveal(rankText);
 
         ShowResultButtons();
+        isResultSequencePlaying = false;
+        resultRoutine = null;
     }
 
     private List<ResultBonus> BuildBonuses(int reachedLevel, PurifierStage reachedStage, int maxCombo, int mistakeCount, int bombHitCount)
@@ -238,25 +342,109 @@ public class ResultController : MonoBehaviour
         return "D";
     }
 
+    private void SetRankBackground(string rank)
+    {
+        if (resultRankBackground == null)
+        {
+            return;
+        }
+
+        var sprite = GetRankSprite(rank);
+        resultRankBackground.sprite = sprite;
+        resultRankBackground.color = sprite != null ? Color.white : new Color(0.02f, 0.04f, 0.08f, 1f);
+    }
+
+    private Sprite GetRankSprite(string rank)
+    {
+        switch (rank)
+        {
+            case "SS":
+                return resultRankSs;
+            case "S":
+                return resultRankS;
+            case "A":
+                return resultRankA;
+            case "B":
+            case "C":
+                return resultRankCb;
+            case "D":
+            default:
+                return resultRankD;
+        }
+    }
+
+    private static string GetStageDisplayName(PurifierStage stage)
+    {
+        switch (stage)
+        {
+            case PurifierStage.Home:
+                return "家ステージ";
+            case PurifierStage.Street:
+                return "街ステージ";
+            case PurifierStage.City:
+                return "都市ステージ";
+            case PurifierStage.Space:
+                return "宇宙ステージ";
+            default:
+                return "ステージ";
+        }
+    }
+
     private Text CreateBonusRow(int index, string text)
     {
-        var y = 130f - index * 76f;
-        return CreateText("ResultBonusText", bonusContainer, text, new Vector2(0f, y), new Vector2(720f, 64f), 34, new Color(1f, 0.94f, 0.56f), TextAnchor.MiddleCenter);
+        var y = 120f - index * 82f;
+        return CreateText("ResultInfoText", bonusContainer, text, new Vector2(0f, y), new Vector2(760f, 70f), 38, new Color(1f, 0.94f, 0.56f), TextAnchor.MiddleCenter);
     }
 
     private void ResetViews()
     {
+        fadePanel?.DOKill();
+        resultRankBackground?.DOKill();
+        resultDarkOverlay?.DOKill();
+        backgroundPanel?.DOKill();
+        titleText?.DOKill();
+        titleText?.rectTransform.DOKill();
+        normalScoreText?.DOKill();
+        normalScoreText?.rectTransform.DOKill();
+        totalScoreText?.DOKill();
+        totalScoreText?.rectTransform.DOKill();
+        rankText?.DOKill();
+        rankText?.rectTransform.DOKill();
+
         foreach (var row in bonusRows)
         {
             if (row != null)
             {
+                row.DOKill();
+                row.rectTransform.DOKill();
                 Destroy(row.gameObject);
             }
         }
         bonusRows.Clear();
 
+        if (fadePanel != null)
+        {
+            fadePanel.color = new Color(0f, 0f, 0f, 0f);
+            fadePanel.gameObject.SetActive(false);
+        }
+
+        if (resultRankBackground != null)
+        {
+            resultRankBackground.color = new Color(1f, 1f, 1f, 0f);
+            resultRankBackground.gameObject.SetActive(false);
+        }
+
+        if (resultDarkOverlay != null)
+        {
+            resultDarkOverlay.color = new Color(0f, 0f, 0f, 0f);
+            resultDarkOverlay.gameObject.SetActive(false);
+        }
+
         backgroundPanel.gameObject.SetActive(false);
         isTransitioning = false;
+        isResultSequencePlaying = false;
+        hasPlayedResultScoreStartSe = false;
+        hasPlayedResultRankRevealSe = false;
         titleText.gameObject.SetActive(false);
         normalScoreText.gameObject.SetActive(false);
         totalScoreText.gameObject.SetActive(false);
@@ -288,6 +476,49 @@ public class ResultController : MonoBehaviour
         yield return TweenToYield(text.rectTransform.DOScale(punchScale, 0.14f).SetEase(Ease.OutBack).SetUpdate(true));
         yield return TweenToYield(text.rectTransform.DOScale(1f, 0.10f).SetEase(Ease.OutQuad).SetUpdate(true));
         yield return new WaitForSecondsRealtime(holdSeconds);
+    }
+
+    private IEnumerator PlayRankReveal(Text text)
+    {
+        if (text == null)
+        {
+            yield break;
+        }
+
+        PlayResultRankRevealSeOnce();
+        text.gameObject.SetActive(true);
+        text.DOKill();
+        text.rectTransform.DOKill();
+        text.color = WithAlpha(text.color, 0f);
+        text.rectTransform.localScale = Vector3.one * Mathf.Max(0.01f, rankRevealStartScale);
+
+        var sequence = DOTween.Sequence().SetUpdate(true);
+        sequence.Join(text.DOFade(1f, Mathf.Max(0.01f, rankRevealFadeDuration)).SetEase(Ease.OutQuad));
+        sequence.Join(text.rectTransform.DOScale(Mathf.Max(0.01f, rankRevealPopScale), Mathf.Max(0.01f, rankRevealPopDuration)).SetEase(Ease.OutBack));
+        sequence.Append(text.rectTransform.DOScale(1f, Mathf.Max(0.01f, rankRevealSettleDuration)).SetEase(Ease.OutQuad));
+        yield return TweenToYield(sequence);
+    }
+
+    private void PlayResultScoreStartSeOnce()
+    {
+        if (hasPlayedResultScoreStartSe)
+        {
+            return;
+        }
+
+        hasPlayedResultScoreStartSe = true;
+        AudioManager.Instance?.PlayResultScoreStartSfx();
+    }
+
+    private void PlayResultRankRevealSeOnce()
+    {
+        if (hasPlayedResultRankRevealSe)
+        {
+            return;
+        }
+
+        hasPlayedResultRankRevealSe = true;
+        AudioManager.Instance?.PlayResultRankRevealSfx();
     }
 
     private static IEnumerator TweenToYield(Tween tween)
@@ -351,16 +582,17 @@ public class ResultController : MonoBehaviour
 
     private Button CreateButton(string name, RectTransform parent, string text, Vector2 anchoredPosition, Vector2 size, Color color)
     {
-        var panel = CreatePanel(name, parent, anchoredPosition, size, color, true);
+        var panel = CreateRoundedPanel(name, parent, anchoredPosition, size, Color.white, true);
         var outline = panel.gameObject.AddComponent<Outline>();
         outline.effectColor = new Color(1f, 1f, 1f, 0.92f);
         outline.effectDistance = new Vector2(5f, -5f);
         var shadow = panel.gameObject.AddComponent<Shadow>();
         shadow.effectColor = new Color(0f, 0f, 0f, 0.35f);
         shadow.effectDistance = new Vector2(7f, -7f);
+        var inner = CreateRoundedPanel("Fill", panel.rectTransform, Vector2.zero, size - new Vector2(12f, 12f), color, false);
 
         var button = panel.gameObject.AddComponent<Button>();
-        button.targetGraphic = panel;
+        button.targetGraphic = inner;
         var colors = button.colors;
         colors.normalColor = color;
         colors.highlightedColor = Color.Lerp(color, Color.white, 0.18f);
@@ -370,6 +602,61 @@ public class ResultController : MonoBehaviour
 
         CreateText($"{name}_Text", panel.rectTransform, text, Vector2.zero, size, 34, Color.white, TextAnchor.MiddleCenter);
         return button;
+    }
+
+    private Image CreateRoundedPanel(string name, RectTransform parent, Vector2 anchoredPosition, Vector2 size, Color color, bool raycastTarget)
+    {
+        var image = CreatePanel(name, parent, anchoredPosition, size, color, raycastTarget);
+        ApplyRoundedCorners(image);
+        return image;
+    }
+
+    private static void ApplyRoundedCorners(Image image)
+    {
+        if (image == null)
+        {
+            return;
+        }
+
+        image.sprite = GetRoundedPanelSprite();
+        image.type = Image.Type.Sliced;
+    }
+
+    private static Sprite GetRoundedPanelSprite()
+    {
+        if (roundedPanelSprite != null)
+        {
+            return roundedPanelSprite;
+        }
+
+        var texture = new Texture2D(RoundedPanelTextureSize, RoundedPanelTextureSize, TextureFormat.RGBA32, false);
+        texture.name = "GeneratedResultRoundedPanelTexture";
+        texture.wrapMode = TextureWrapMode.Clamp;
+
+        var radius = RoundedPanelRadius;
+        var maxIndex = RoundedPanelTextureSize - 1;
+        for (var y = 0; y < RoundedPanelTextureSize; y++)
+        {
+            for (var x = 0; x < RoundedPanelTextureSize; x++)
+            {
+                var dx = x < radius ? radius - x : x > maxIndex - radius ? x - (maxIndex - radius) : 0;
+                var dy = y < radius ? radius - y : y > maxIndex - radius ? y - (maxIndex - radius) : 0;
+                var inside = dx * dx + dy * dy <= radius * radius;
+                texture.SetPixel(x, y, inside ? Color.white : Color.clear);
+            }
+        }
+
+        texture.Apply();
+        roundedPanelSprite = Sprite.Create(
+            texture,
+            new Rect(0f, 0f, RoundedPanelTextureSize, RoundedPanelTextureSize),
+            new Vector2(0.5f, 0.5f),
+            100f,
+            0,
+            SpriteMeshType.FullRect,
+            new Vector4(radius, radius, radius, radius));
+        roundedPanelSprite.name = "GeneratedResultRoundedPanel";
+        return roundedPanelSprite;
     }
 
     private void ShowResultButtons()
@@ -416,11 +703,13 @@ public class ResultController : MonoBehaviour
 
     private void OnRestartButtonClicked()
     {
+        Debug.Log($"[Lifecycle] RestartCalled from=ResultButton target={SceneManager.GetActiveScene().name} t={Time.realtimeSinceStartup:0.00}");
         TransitionToScene(SceneManager.GetActiveScene().name);
     }
 
     private void OnBackToTitleButtonClicked()
     {
+        Debug.Log($"[Lifecycle] ReturnToTitleCalled from=ResultButton target={titleSceneName} t={Time.realtimeSinceStartup:0.00}");
         TransitionToScene(titleSceneName);
     }
 
@@ -449,6 +738,7 @@ public class ResultController : MonoBehaviour
 
         Time.timeScale = 1f;
         AudioManager.Instance?.StopGameplayBgm();
+        Debug.Log($"[Lifecycle] ResultTransitionLoading scene={sceneName} t={Time.realtimeSinceStartup:0.00}");
         fadePanel.gameObject.SetActive(true);
         fadePanel.DOKill();
         yield return TweenToYield(fadePanel.DOFade(1f, Mathf.Max(0f, sceneTransitionFadeDuration)).SetEase(Ease.OutQuad).SetUpdate(true));

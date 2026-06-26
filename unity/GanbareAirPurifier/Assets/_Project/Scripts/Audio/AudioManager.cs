@@ -9,13 +9,22 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private SfxDatabase sfxDatabase;
     [SerializeField] private AudioClip wrongSfx;
     [SerializeField] private AudioClip bombSfx;
+    [SerializeField] private AudioClip timeupWhistleClip;
+    [SerializeField] private AudioClip resultScoreStartClip;
+    [SerializeField] private AudioClip resultRankRevealClip;
     [SerializeField] private string wrongSfxKey = "Wrong";
     [SerializeField] private string bombSfxKey = string.Empty;
+    [SerializeField] private string timeupWhistleSfxKey = "sfx_timeup_whistle";
+    [SerializeField] private string resultScoreStartSfxKey = "sfx_result_score_start";
+    [SerializeField] private string resultRankRevealSfxKey = "sfx_result_rank_reveal";
     [SerializeField] private int sourcePoolSize = 8;
     [SerializeField, Range(0f, 1f)] private float masterVolume = 1f;
     [SerializeField, Range(0f, 1f)] private float successSfxVolume = 0.6f;
     [SerializeField, Range(0f, 1f)] private float wrongSfxVolume = 0.68f;
     [SerializeField, Range(0f, 1f)] private float bombSfxVolume = 0.68f;
+    [SerializeField, Range(0f, 1f)] private float timeupWhistleVolume = 1f;
+    [SerializeField, Range(0f, 1f)] private float resultScoreStartVolume = 1f;
+    [SerializeField, Range(0f, 1f)] private float resultRankRevealVolume = 1f;
     [SerializeField, Range(0f, 1f)] private float uiSfxVolume = 0.6f;
     [SerializeField] private Vector2 successPitchRange = new Vector2(0.95f, 1.05f);
     [SerializeField] private AudioClip gameplayBgmClip;
@@ -86,6 +95,24 @@ public class AudioManager : MonoBehaviour
     {
         var clip = bombSfx != null ? bombSfx : sfxDatabase != null ? sfxDatabase.GetClip(bombSfxKey) : null;
         PlayClip(clip, bombSfxVolume, false, true);
+    }
+
+    public void PlayTimeupWhistle()
+    {
+        var clip = timeupWhistleClip != null ? timeupWhistleClip : sfxDatabase != null ? sfxDatabase.GetClip(timeupWhistleSfxKey) : null;
+        PlayClip(clip, timeupWhistleVolume, false, true);
+    }
+
+    public void PlayResultScoreStartSfx()
+    {
+        var clip = resultScoreStartClip != null ? resultScoreStartClip : sfxDatabase != null ? sfxDatabase.GetClip(resultScoreStartSfxKey) : null;
+        PlayClip(clip, resultScoreStartVolume, false, true);
+    }
+
+    public void PlayResultRankRevealSfx()
+    {
+        var clip = resultRankRevealClip != null ? resultRankRevealClip : sfxDatabase != null ? sfxDatabase.GetClip(resultRankRevealSfxKey) : null;
+        PlayClip(clip, resultRankRevealVolume, false, true);
     }
 
     public void PlayUiSfx(AudioClip clip)

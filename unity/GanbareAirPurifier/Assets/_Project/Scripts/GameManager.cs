@@ -47,7 +47,9 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Text resultText;
     [SerializeField] private Image gaugeFill;
     [SerializeField] private Image startOverlayDimPanel;
+    [SerializeField] private Image timeWarningRedOverlay;
     [SerializeField] private Text startPromptText;
+    [SerializeField] private Text startLevelHelpText;
     [SerializeField] private Text countdownText;
     [SerializeField] private TargetMarkerController targetMarkerController;
     [SerializeField] private Button fastForwardButton;
@@ -64,6 +66,11 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Sprite playUiBackgroundSprite;
     [SerializeField] private Sprite fastForwardButtonSprite;
     [SerializeField] private Sprite bombExplosionSprite;
+    [SerializeField] private Sprite resultRankD;
+    [SerializeField] private Sprite resultRankCb;
+    [SerializeField] private Sprite resultRankA;
+    [SerializeField] private Sprite resultRankS;
+    [SerializeField] private Sprite resultRankSs;
     [SerializeField] private TextAsset itemMasterCsv;
     [SerializeField] private ItemSpriteDatabase itemSpriteDatabase;
     [SerializeField] private SfxDatabase sfxDatabase;
@@ -83,6 +90,13 @@ public class GameManager : MonoBehaviour
     [SerializeField] private float overlayBottomPadding = 0f;
     [SerializeField, Range(0f, 1f)] private float playUiBackgroundAlpha = 0.62f;
 
+    [Header("Object Pools")]
+    [SerializeField] private int scorePopupInitialPoolSize = 16;
+
+    [Header("Time Warning")]
+    [SerializeField, Range(0f, 1f)] private float timeWarningMaxAlpha = 0.25f;
+    [SerializeField] private float timeWarningFadeDuration = 0.45f;
+
     private readonly List<ItemController> activeItems = new List<ItemController>();
     private readonly StageManager stageManager = new StageManager();
     private readonly GaugeManager gaugeManager = new GaugeManager();
@@ -101,6 +115,8 @@ public class GameManager : MonoBehaviour
     private bool lastHadTargetInRange;
     private bool resultStarted;
     private bool isGameplayRestarting;
+    private bool hasPlayedTimeupWhistle;
+    private bool isTimeWarningActive;
     private GameState currentState = GameState.WaitingToStart;
     private int lastDisplayedSuctionLevel = -1;
     private int lastDisplayedTime = -1;
@@ -112,6 +128,9 @@ public class GameManager : MonoBehaviour
     private int reachedLevel = 1;
     private PurifierStage reachedStage = PurifierStage.Home;
     private float suppressPointerSuckUntilRealtime;
+    private float nextActiveSpawnCountLogTime;
+    private Tween timeWarningTween;
+    private ComponentPool<FloatingScoreText> scorePopupPool;
 
     public int CurrentSuctionLevel => gaugeManager.SuctionLevel;
     public PurifierStage CurrentStage => stageManager.CurrentStage;
@@ -158,6 +177,15 @@ public class GameManager : MonoBehaviour
         fastForwardButtonSprite = buttonSprite;
     }
 
+    public void ConfigureResultRankSprites(Sprite rankD, Sprite rankCb, Sprite rankA, Sprite rankS, Sprite rankSs)
+    {
+        resultRankD = rankD;
+        resultRankCb = rankCb;
+        resultRankA = rankA;
+        resultRankS = rankS;
+        resultRankSs = rankSs;
+    }
+
     public void ConfigureDataAssets(TextAsset itemMaster, ItemSpriteDatabase spriteDatabase, SfxDatabase sfxDatabaseAsset = null)
     {
         itemMasterCsv = itemMaster;
@@ -174,6 +202,7 @@ public class GameManager : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
     {
+        Debug.Log($"[Lifecycle] GameBoot scene={SceneManager.GetActiveScene().name} t={Time.realtimeSinceStartup:0.00}");
         if (FindFirstObjectByType<GameManager>() != null)
         {
             return;
@@ -188,6 +217,7 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
+        Debug.Log($"[Lifecycle] GameManager Awake scene={SceneManager.GetActiveScene().name} t={Time.realtimeSinceStartup:0.00}");
         Time.timeScale = NormalTimeScale;
         ItemDatabase.SetSpriteDatabase(itemSpriteDatabase);
         EnsureEventSystem();
@@ -199,6 +229,7 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
+        Debug.Log($"[Lifecycle] Gameplay Start scene={SceneManager.GetActiveScene().name} t={Time.realtimeSinceStartup:0.00}");
         stageManager.Initialize(ItemDatabase.LoadDefault(itemMasterCsv, itemSpriteDatabase));
         scoreManager.Reset();
         comboManager.Reset();
@@ -212,13 +243,18 @@ public class GameManager : MonoBehaviour
         reachedLevel = gaugeManager.SuctionLevel;
         reachedStage = stageManager.CurrentStage;
         resultStarted = false;
+        hasPlayedTimeupWhistle = false;
         currentState = GameState.WaitingToStart;
+        StopTimeWarning();
         ShowStartPrompt();
         UpdateUi();
     }
 
     private void OnDestroy()
     {
+        Debug.Log($"[Lifecycle] GameManager OnDestroy scene={SceneManager.GetActiveScene().name} t={Time.realtimeSinceStartup:0.00}");
+        StopAllCoroutines();
+        StopTimeWarning();
         if (Time.timeScale != NormalTimeScale)
         {
             Time.timeScale = NormalTimeScale;
@@ -243,6 +279,7 @@ public class GameManager : MonoBehaviour
         if (CanTickTimer)
         {
             timerManager.Tick(Time.unscaledDeltaTime);
+            UpdateTimeWarning();
             if (IsTimeUp && currentState == GameState.Playing)
             {
                 BeginGameOver();
@@ -266,6 +303,7 @@ public class GameManager : MonoBehaviour
         {
             HandleHeldSuction();
             HandleInput();
+            LogActiveSpawnCountIfNeeded();
         }
         UpdateUi();
 
@@ -287,6 +325,85 @@ public class GameManager : MonoBehaviour
             activeItems.Add(item);
             item.SetMoveSpeedMultiplier(GameplaySpeedMultiplier);
         }
+    }
+
+    private void LogActiveSpawnCountIfNeeded()
+    {
+        if (Time.unscaledTime < nextActiveSpawnCountLogTime)
+        {
+            return;
+        }
+
+        nextActiveSpawnCountLogTime = Time.unscaledTime + 5f;
+        var scorePopupActiveCount = scorePopupPool != null ? scorePopupPool.ActiveCount : 0;
+        Debug.Log($"[Lifecycle] ActiveSpawnCount items={activeItems.Count} scorePopups={scorePopupActiveCount} t={Time.realtimeSinceStartup:0.00}");
+    }
+
+    private void UpdateTimeWarning()
+    {
+        if (currentState != GameState.Playing)
+        {
+            StopTimeWarning();
+            return;
+        }
+
+        if (timerManager.TimeLeft <= 5f && !IsTimeUp)
+        {
+            StartTimeWarning();
+            return;
+        }
+
+        StopTimeWarning();
+    }
+
+    private void StartTimeWarning()
+    {
+        if (isTimeWarningActive || timeWarningRedOverlay == null)
+        {
+            return;
+        }
+
+        isTimeWarningActive = true;
+        timeWarningRedOverlay.DOKill();
+        timeWarningRedOverlay.gameObject.SetActive(true);
+        timeWarningRedOverlay.color = new Color(1f, 0f, 0f, 0f);
+        timeWarningTween = timeWarningRedOverlay
+            .DOFade(Mathf.Clamp01(timeWarningMaxAlpha), Mathf.Max(0.01f, timeWarningFadeDuration))
+            .SetEase(Ease.InOutSine)
+            .SetLoops(-1, LoopType.Yoyo)
+            .SetUpdate(true);
+    }
+
+    private void StopTimeWarning()
+    {
+        if (!isTimeWarningActive && timeWarningTween == null && (timeWarningRedOverlay == null || !timeWarningRedOverlay.gameObject.activeSelf))
+        {
+            return;
+        }
+
+        isTimeWarningActive = false;
+        timeWarningTween?.Kill();
+        timeWarningTween = null;
+
+        if (timeWarningRedOverlay == null)
+        {
+            return;
+        }
+
+        timeWarningRedOverlay.DOKill();
+        timeWarningRedOverlay.color = new Color(1f, 0f, 0f, 0f);
+        timeWarningRedOverlay.gameObject.SetActive(false);
+    }
+
+    private void PlayTimeupWhistleOnce()
+    {
+        if (hasPlayedTimeupWhistle)
+        {
+            return;
+        }
+
+        hasPlayedTimeupWhistle = true;
+        audioManager?.PlayTimeupWhistle();
     }
 
     public static float GetStageMoveSpeedMultiplier(PurifierStage stage)
@@ -324,11 +441,7 @@ public class GameManager : MonoBehaviour
     public void HandleItemMissed(ItemController item)
     {
         activeItems.Remove(item);
-        if (item != null)
-        {
-            item.KillTweens();
-            Destroy(item.gameObject);
-        }
+        ReturnItemToPool(item);
     }
 
     public void TrySuck()
@@ -395,8 +508,7 @@ public class GameManager : MonoBehaviour
 
         if (item != null)
         {
-            item.KillTweens();
-            Destroy(item.gameObject);
+            ReturnItemToPool(item);
         }
 
         RestoreAirPurifierState();
@@ -451,13 +563,64 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        var popupRect = CreateRect("ScorePopup", scorePopupLayer, anchoredPosition, new Vector2(320f, 128f));
+        var popup = scorePopupPool?.Get();
+        if (popup == null)
+        {
+            return;
+        }
+
+        popup.Play(score, combo, comboMultiplier, anchoredPosition, GetBuiltinFont(), ReturnScorePopupToPool);
+    }
+
+    private void InitializeScorePopupPool()
+    {
+        scorePopupPool = new ComponentPool<FloatingScoreText>(
+            CreateScorePopupInstance,
+            scorePopupInitialPoolSize,
+            popup => popup.gameObject.SetActive(true),
+            popup => popup.ResetForPool());
+        Debug.Log($"[Pool] Score popup pool initialized. InitialSize={scorePopupInitialPoolSize}");
+    }
+
+    private FloatingScoreText CreateScorePopupInstance()
+    {
+        var popupRect = CreateRect("ScorePopup", scorePopupLayer, Vector2.zero, new Vector2(320f, 128f));
         var canvasGroup = popupRect.gameObject.AddComponent<CanvasGroup>();
         canvasGroup.blocksRaycasts = false;
         canvasGroup.interactable = false;
 
         var popup = popupRect.gameObject.AddComponent<FloatingScoreText>();
-        popup.Play(score, combo, comboMultiplier, anchoredPosition, GetBuiltinFont());
+        popup.Prepare(GetBuiltinFont());
+        popup.gameObject.SetActive(false);
+        return popup;
+    }
+
+    private void ReturnScorePopupToPool(FloatingScoreText popup)
+    {
+        scorePopupPool?.Release(popup);
+    }
+
+    private void ReturnItemToPool(ItemController item)
+    {
+        if (item == null)
+        {
+            return;
+        }
+
+        if (highlightedItem == item)
+        {
+            highlightedItem = null;
+        }
+
+        if (itemSpawner != null)
+        {
+            itemSpawner.ReleaseItem(item);
+        }
+        else
+        {
+            item.ResetForPool();
+            item.gameObject.SetActive(false);
+        }
     }
 
     public void ResolveBomb(ItemController item)
@@ -469,8 +632,7 @@ public class GameManager : MonoBehaviour
 
         if (item != null)
         {
-            item.KillTweens();
-            Destroy(item.gameObject);
+            ReturnItemToPool(item);
         }
 
         StartCoroutine(PlayBombPenalty());
@@ -572,10 +734,12 @@ public class GameManager : MonoBehaviour
 
     private void ShowStartPrompt()
     {
+        BringStartOverlayToFront(false);
+
         if (startOverlayDimPanel != null)
         {
             startOverlayDimPanel.gameObject.SetActive(true);
-            startOverlayDimPanel.color = new Color(0f, 0f, 0f, 0.45f);
+            startOverlayDimPanel.color = new Color(0f, 0f, 0f, 0.64f);
         }
 
         if (startPromptText != null)
@@ -589,10 +753,30 @@ public class GameManager : MonoBehaviour
                 .SetLoops(-1, LoopType.Yoyo);
         }
 
+        if (startLevelHelpText != null)
+        {
+            startLevelHelpText.gameObject.SetActive(true);
+            startLevelHelpText.text = "吸引Lvまでのモノを\n吸い込めるよ";
+        }
+
         if (countdownText != null)
         {
             countdownText.gameObject.SetActive(false);
         }
+    }
+
+    private void BringStartOverlayToFront(bool countdown)
+    {
+        startOverlayDimPanel?.rectTransform.SetAsLastSibling();
+
+        if (countdown)
+        {
+            countdownText?.rectTransform.SetAsLastSibling();
+            return;
+        }
+
+        startPromptText?.rectTransform.SetAsLastSibling();
+        startLevelHelpText?.rectTransform.SetAsLastSibling();
     }
 
     private void HandleStartPromptInput()
@@ -623,14 +807,21 @@ public class GameManager : MonoBehaviour
             startPromptText.gameObject.SetActive(false);
         }
 
+        if (startLevelHelpText != null)
+        {
+            startLevelHelpText.gameObject.SetActive(false);
+        }
+
         if (countdownText != null)
         {
+            BringStartOverlayToFront(true);
             countdownText.gameObject.SetActive(true);
             yield return PlayCountdownText("3", 1.0f);
             yield return PlayCountdownText("2", 1.0f);
             yield return PlayCountdownText("1", 1.0f);
 
             currentState = GameState.Playing;
+            Debug.Log($"[Lifecycle] GameplayStarted scene={SceneManager.GetActiveScene().name} t={Time.realtimeSinceStartup:0.00}");
             resultText.text = "清浄スタート！";
             audioManager?.PlayGameplayBgm();
             UpdateUi();
@@ -650,6 +841,7 @@ public class GameManager : MonoBehaviour
         {
             yield return new WaitForSecondsRealtime(2.5f);
             currentState = GameState.Playing;
+            Debug.Log($"[Lifecycle] GameplayStarted scene={SceneManager.GetActiveScene().name} t={Time.realtimeSinceStartup:0.00}");
             resultText.text = "清浄スタート！";
             audioManager?.PlayGameplayBgm();
             UpdateUi();
@@ -754,6 +946,7 @@ public class GameManager : MonoBehaviour
         bombExplosionSprite = ItemDatabase.LoadSpriteOrNull("Effect_BombExplosion");
         bombExplosionImage = CreateBombExplosionImage(root, bombExplosionSprite);
         scorePopupLayer = CreateRect("ScorePopupLayer", root, Vector2.zero, new Vector2(1080f, 1920f));
+        InitializeScorePopupPool();
 
         var hudPanelColor = new Color(0.42f, 0.78f, 1f, 0.38f);
         scoreText = CreateReadableText("CENTER_HUD_Text", root, GetCenterHudText(90, 0), new Vector2(5f, 700f), new Vector2(390f, 300f), 42, Color.white, TextAnchor.MiddleCenter, hudPanelColor);
@@ -769,7 +962,7 @@ public class GameManager : MonoBehaviour
         ApplyRoundedCorners(levelPanelFill);
         levelText = CreateText("SuctionLevel_Label", levelPanel.rectTransform, "吸引Lv", new Vector2(0f, 135f), new Vector2(160f, 60f), 28, new Color(0.12f, 0.18f, 0.28f), TextAnchor.MiddleCenter);
         levelNumberText = CreateText("SuctionLevel_Number", levelPanel.rectTransform, "1", new Vector2(0f, -30f), new Vector2(180f, 260f), 150, new Color(0.10f, 0.16f, 0.28f), TextAnchor.MiddleCenter);
-        stageText = CreateReadableText("Stage_Text", root, GetStageHudText(), new Vector2(-220f, -815f), new Vector2(420f, 56f), 28, Color.white, TextAnchor.MiddleCenter);
+        stageText = CreateReadableText("Stage_Text", root, GetStageHudText(), new Vector2(-225f, -840f), new Vector2(420f, 56f), 28, Color.white, TextAnchor.MiddleCenter);
         resultText = CreateReadableText("Result_Text", root, "クリックで吸引", new Vector2(375f, 770f), new Vector2(300f, 56f), 26, new Color(0.92f, 1f, 1f), TextAnchor.MiddleCenter);
         SetReadableTextVisible(stageText, true);
         SetReadableTextVisible(resultText, false);
@@ -782,7 +975,7 @@ public class GameManager : MonoBehaviour
         ApplyRoundedCorners(gaugeFill);
         gaugeFill.rectTransform.pivot = new Vector2(0.5f, 0f);
 
-        fastForwardButton = CreateIconButton("FastForward_Button", root, fastForwardButtonSprite, "x2\n早送り", new Vector2(-220f, -680f), new Vector2(486f, 216f), new Color(0.26f, 0.62f, 1f));
+        fastForwardButton = CreateIconButton("FastForward_Button", root, fastForwardButtonSprite, "x2\n早送り", new Vector2(-225f, -705f), new Vector2(486f, 216f), new Color(0.26f, 0.62f, 1f));
         var fastButton = fastForwardButton.gameObject.AddComponent<FastForwardButton>();
         fastButton.Configure(this);
         gameplayRestartButton = CreateButton("GameplayRestartButton", root, "再", new Vector2(366f, 635f), new Vector2(88f, 88f), new Color(1f, 0.58f, 0.18f));
@@ -791,8 +984,9 @@ public class GameManager : MonoBehaviour
         BringReadableTextToFront(comboText);
 
         CreateStartOverlay(root);
+        timeWarningRedOverlay = CreateTimeWarningRedOverlay(root);
         fadeController = CreateFadeController(root);
-        resultController = CreateResultController(root);
+        resultController = CreateResultController(root, resultRankD, resultRankCb, resultRankA, resultRankS, resultRankSs);
     }
 
     private void EnsureEventSystem()
@@ -968,6 +1162,7 @@ public class GameManager : MonoBehaviour
 
     private IEnumerator PlayStageTransition(PurifierStage previousStage, PurifierStage nextStage, int previousLevel, int nextLevel)
     {
+        Debug.Log($"[Lifecycle] StageChanged from={previousStage} to={nextStage} previousLv={previousLevel} nextLv={nextLevel} activeItems={activeItems.Count} t={Time.realtimeSinceStartup:0.00}");
         isStageTransitioning = true;
         keyboardFastForward = false;
         SetFastForward(false);
@@ -1016,6 +1211,8 @@ public class GameManager : MonoBehaviour
 
         resultStarted = true;
         currentState = GameState.GameOver;
+        PlayTimeupWhistleOnce();
+        StopTimeWarning();
         if (gameplayRestartButton != null)
         {
             gameplayRestartButton.gameObject.SetActive(false);
@@ -1029,9 +1226,11 @@ public class GameManager : MonoBehaviour
         suctionZoneVisual?.SetIdle();
         highlightedItem = null;
         lastHadTargetInRange = false;
+        ClearActiveItems();
 
         if (resultController != null)
         {
+            Debug.Log($"[Lifecycle] ResultShown score={scoreManager.Score} reachedLevel={reachedLevel} reachedStage={reachedStage} maxCombo={maxCombo} mistakes={mistakeCount} bombs={bombHitCount} t={Time.realtimeSinceStartup:0.00}");
             resultController.ShowResult(scoreManager.Score, reachedLevel, reachedStage, maxCombo, mistakeCount, bombHitCount);
         }
     }
@@ -1050,7 +1249,9 @@ public class GameManager : MonoBehaviour
         }
 
         Time.timeScale = 1f;
+        StopTimeWarning();
         audioManager?.StopGameplayBgm();
+        Debug.Log($"[Lifecycle] RestartCalled from=GameplayRestartButton scene={SceneManager.GetActiveScene().name} t={Time.realtimeSinceStartup:0.00}");
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
@@ -1072,6 +1273,8 @@ public class GameManager : MonoBehaviour
 
     private void ClearActiveItems()
     {
+        suctionManager?.CancelAll();
+
         foreach (var item in activeItems)
         {
             if (item == null)
@@ -1080,10 +1283,11 @@ public class GameManager : MonoBehaviour
             }
 
             item.KillTweens();
-            Destroy(item.gameObject);
+            ReturnItemToPool(item);
         }
 
         activeItems.Clear();
+        scorePopupPool?.ReleaseAllActive();
         highlightedItem = null;
         lastHadTargetInRange = false;
         suctionZoneVisual?.SetIdle();
@@ -1640,13 +1844,23 @@ public class GameManager : MonoBehaviour
         return controller;
     }
 
-    private static ResultController CreateResultController(RectTransform parent)
+    private static Image CreateTimeWarningRedOverlay(RectTransform parent)
+    {
+        var overlay = CreatePanel("TimeWarningRedOverlay", parent, Vector2.zero, new Vector2(1080f, 1920f), new Color(1f, 0f, 0f, 0f), false);
+        StretchToParent(overlay.rectTransform);
+        overlay.raycastTarget = false;
+        overlay.gameObject.SetActive(false);
+        return overlay;
+    }
+
+    private static ResultController CreateResultController(RectTransform parent, Sprite resultRankD, Sprite resultRankCb, Sprite resultRankA, Sprite resultRankS, Sprite resultRankSs)
     {
         var root = CreateRect("ResultRoot", parent, Vector2.zero, new Vector2(1080f, 1920f));
         StretchToParent(root);
         root.SetAsLastSibling();
         var controller = root.gameObject.AddComponent<ResultController>();
         controller.Configure(root, GetBuiltinFont());
+        controller.ConfigureRankSprites(resultRankD, resultRankCb, resultRankA, resultRankS, resultRankSs);
         root.gameObject.SetActive(false);
         return controller;
     }
@@ -1654,6 +1868,7 @@ public class GameManager : MonoBehaviour
     private static Image CreateBottomPlayUiBackground(RectTransform parent, Sprite sprite, float alpha, float bottomPadding)
     {
         var size = GetAspectFitWidthSize(sprite, 1080f, 590f);
+        size.y *= 0.8f;
         var image = CreatePanel("BottomPlayUiBackground", parent, Vector2.zero, size, Color.white, false);
         var rect = image.rectTransform;
         rect.anchorMin = new Vector2(0f, 0f);
@@ -1706,16 +1921,29 @@ public class GameManager : MonoBehaviour
 
     private void CreateStartOverlay(RectTransform parent)
     {
-        startOverlayDimPanel = CreatePanel("StartOverlayDimPanel", parent, Vector2.zero, new Vector2(1080f, 1920f), new Color(0f, 0f, 0f, 0.45f), true);
+        startOverlayDimPanel = CreatePanel("StartOverlayDimPanel", parent, Vector2.zero, new Vector2(1080f, 1920f), new Color(0f, 0f, 0f, 0.64f), true);
         StretchToParent(startOverlayDimPanel.rectTransform);
 
-        startPromptText = CreateText("StartPromptText", parent, "TAPで清浄スタート！", Vector2.zero, new Vector2(930f, 180f), 76, new Color(0.18f, 0.62f, 1f), TextAnchor.MiddleCenter);
+        startPromptText = CreateText("StartPromptText", parent, "TAPで清浄スタート！", Vector2.zero, new Vector2(930f, 180f), 76, Color.white, TextAnchor.MiddleCenter);
         var promptOutline = startPromptText.GetComponent<Outline>();
         if (promptOutline != null)
         {
             promptOutline.effectColor = new Color(0.04f, 0.10f, 0.22f, 0.98f);
             promptOutline.effectDistance = new Vector2(7f, -7f);
         }
+
+        startLevelHelpText = CreateText("StartLevelHelpText", parent, "吸引Lvまでのモノを\n吸い込めるよ", new Vector2(-116f, 500f), new Vector2(590f, 118f), 38, Color.white, TextAnchor.MiddleLeft);
+        startLevelHelpText.lineSpacing = 0.9f;
+        var helpOutline = startLevelHelpText.GetComponent<Outline>();
+        if (helpOutline != null)
+        {
+            helpOutline.effectColor = new Color(0.02f, 0.08f, 0.18f, 0.98f);
+            helpOutline.effectDistance = new Vector2(5f, -5f);
+        }
+
+        var helpShadow = startLevelHelpText.gameObject.AddComponent<Shadow>();
+        helpShadow.effectColor = new Color(0f, 0f, 0f, 0.55f);
+        helpShadow.effectDistance = new Vector2(5f, -5f);
 
         countdownText = CreateText("CountdownText", parent, "3", Vector2.zero, new Vector2(900f, 220f), 118, new Color(1f, 0.96f, 0.24f), TextAnchor.MiddleCenter);
         var countdownOutline = countdownText.GetComponent<Outline>();
@@ -1809,6 +2037,7 @@ public class GameManager : MonoBehaviour
 
     private void EnsureFullscreenRuntimeOverlays()
     {
+        StretchNamedRect("TimeWarningRedOverlay");
         StretchNamedRect("FadeOverlay");
         SetNamedImageAlpha("Play_Lane", 0f);
         SetNamedImageAlpha("TargetMarker_InputArea", 0f);
