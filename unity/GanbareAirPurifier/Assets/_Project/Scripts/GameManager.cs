@@ -127,6 +127,9 @@ public class GameManager : MonoBehaviour
     private int bombHitCount;
     private int reachedLevel = 1;
     private PurifierStage reachedStage = PurifierStage.Home;
+    private bool hasAbsorbedDog;
+    private bool hasAbsorbedCat;
+    private bool hasTakenDamage;
     private float suppressPointerSuckUntilRealtime;
     private float nextActiveSpawnCountLogTime;
     private Tween timeWarningTween;
@@ -240,6 +243,9 @@ public class GameManager : MonoBehaviour
         maxCombo = 0;
         mistakeCount = 0;
         bombHitCount = 0;
+        hasAbsorbedDog = false;
+        hasAbsorbedCat = false;
+        hasTakenDamage = false;
         reachedLevel = gaugeManager.SuctionLevel;
         reachedStage = stageManager.CurrentStage;
         resultStarted = false;
@@ -499,6 +505,7 @@ public class GameManager : MonoBehaviour
             suctionZoneVisual?.SetFailFlash();
             comboManager.Reset();
             mistakeCount += 1;
+            hasTakenDamage = true;
             if (currentState != GameState.GameOver)
             {
                 timerManager.ApplyPenalty(PenaltySeconds);
@@ -524,6 +531,7 @@ public class GameManager : MonoBehaviour
 
         var combo = comboManager.AddCombo();
         maxCombo = Mathf.Max(maxCombo, combo);
+        RecordAbsorbedAnimal(item.Data);
         var gainedScore = scoreManager.AddSuccessScore(item.Data.Score, combo);
         audioManager?.PlaySuccessSfx(item.Data.SuccessSfxKey);
         ShowScorePopup(gainedScore, combo, ScoreManager.GetComboMultiplier(combo), item.RectTransform.anchoredPosition);
@@ -554,6 +562,34 @@ public class GameManager : MonoBehaviour
         }
 
         UpdateUi();
+    }
+
+    private void RecordAbsorbedAnimal(ItemData item)
+    {
+        if (item == null)
+        {
+            return;
+        }
+
+        if (IsDogItem(item))
+        {
+            hasAbsorbedDog = true;
+        }
+
+        if (IsCatItem(item))
+        {
+            hasAbsorbedCat = true;
+        }
+    }
+
+    private static bool IsDogItem(ItemData item)
+    {
+        return item != null && (item.Id == "street_dog" || item.DisplayName == "犬");
+    }
+
+    private static bool IsCatItem(ItemData item)
+    {
+        return item != null && (item.Id == "street_cat" || item.DisplayName == "猫");
     }
 
     private void ShowScorePopup(int score, int combo, float comboMultiplier, Vector2 anchoredPosition)
@@ -628,6 +664,7 @@ public class GameManager : MonoBehaviour
         activeItems.Remove(item);
         comboManager.Reset();
         bombHitCount += 1;
+        hasTakenDamage = true;
         resultText.text = "BOMB!";
 
         if (item != null)
@@ -1230,8 +1267,8 @@ public class GameManager : MonoBehaviour
 
         if (resultController != null)
         {
-            Debug.Log($"[Lifecycle] ResultShown score={scoreManager.Score} reachedLevel={reachedLevel} reachedStage={reachedStage} maxCombo={maxCombo} mistakes={mistakeCount} bombs={bombHitCount} t={Time.realtimeSinceStartup:0.00}");
-            resultController.ShowResult(scoreManager.Score, reachedLevel, reachedStage, maxCombo, mistakeCount, bombHitCount);
+            Debug.Log($"[Lifecycle] ResultShown score={scoreManager.Score} reachedLevel={reachedLevel} reachedStage={reachedStage} maxCombo={maxCombo} dog={hasAbsorbedDog} cat={hasAbsorbedCat} damage={hasTakenDamage} mistakes={mistakeCount} bombs={bombHitCount} t={Time.realtimeSinceStartup:0.00}");
+            resultController.ShowResult(scoreManager.Score, reachedLevel, reachedStage, maxCombo, hasAbsorbedDog, hasAbsorbedCat, hasTakenDamage);
         }
     }
 

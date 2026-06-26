@@ -93,9 +93,9 @@ public class ResultController : MonoBehaviour
         resultRankSs = rankSs;
     }
 
-    public void ShowResult(int normalScore, int reachedLevel, PurifierStage reachedStage, int maxCombo, int mistakeCount, int bombHitCount)
+    public void ShowResult(int baseCleanScore, int highestReachedLevel, PurifierStage highestReachedStage, int maxCombo, bool hasAbsorbedDog, bool hasAbsorbedCat, bool hasTakenDamage)
     {
-        Debug.Log($"[Lifecycle] ResultShown controller=ResultController score={normalScore} reachedLevel={reachedLevel} reachedStage={reachedStage} maxCombo={maxCombo} mistakes={mistakeCount} bombs={bombHitCount} t={Time.realtimeSinceStartup:0.00}");
+        Debug.Log($"[Lifecycle] ResultShown controller=ResultController score={baseCleanScore} reachedLevel={highestReachedLevel} reachedStage={highestReachedStage} maxCombo={maxCombo} dog={hasAbsorbedDog} cat={hasAbsorbedCat} damage={hasTakenDamage} t={Time.realtimeSinceStartup:0.00}");
 
         if (isResultSequencePlaying)
         {
@@ -118,7 +118,7 @@ public class ResultController : MonoBehaviour
             StopCoroutine(resultRoutine);
         }
 
-        resultRoutine = StartCoroutine(PlayResult(normalScore, reachedLevel, reachedStage, maxCombo, mistakeCount, bombHitCount));
+        resultRoutine = StartCoroutine(PlayResult(baseCleanScore, highestReachedLevel, highestReachedStage, maxCombo, hasAbsorbedDog, hasAbsorbedCat, hasTakenDamage));
     }
 
     private void OnDisable()
@@ -163,16 +163,16 @@ public class ResultController : MonoBehaviour
         StretchToParent(resultDarkOverlay.rectTransform);
         resultDarkOverlay.gameObject.SetActive(false);
 
-        backgroundPanel = CreatePanel("ResultScoreRoot", root, Vector2.zero, new Vector2(900f, 1160f), new Color(0f, 0f, 0f, 0f), false);
+        backgroundPanel = CreatePanel("ResultScoreRoot", root, Vector2.zero, new Vector2(980f, 1240f), new Color(0f, 0f, 0f, 0f), false);
         backgroundPanel.gameObject.SetActive(false);
 
-        titleText = CreateText("ResultTitleText", backgroundPanel.rectTransform, "清浄リザルト", new Vector2(0f, 470f), new Vector2(780f, 110f), 58, new Color(1f, 0.95f, 0.24f), TextAnchor.MiddleCenter);
-        normalScoreText = CreateText("ResultNormalScoreText", backgroundPanel.rectTransform, string.Empty, new Vector2(0f, 335f), new Vector2(780f, 82f), 44, Color.white, TextAnchor.MiddleCenter);
-        bonusContainer = CreateRect("ResultInfoContainer", backgroundPanel.rectTransform, new Vector2(0f, 95f), new Vector2(780f, 330f));
-        totalScoreText = CreateText("ResultTotalScoreText", backgroundPanel.rectTransform, string.Empty, new Vector2(0f, -210f), new Vector2(780f, 92f), 50, new Color(0.54f, 0.94f, 1f), TextAnchor.MiddleCenter);
-        rankText = CreateText("ResultRankText", backgroundPanel.rectTransform, string.Empty, new Vector2(0f, -340f), new Vector2(900f, 172f), 104, new Color(1f, 0.42f, 0.18f), TextAnchor.MiddleCenter);
-        restartButton = CreateButton("ResultRestartButton", backgroundPanel.rectTransform, "リスタート", new Vector2(0f, -485f), new Vector2(520f, 86f), new Color(0.18f, 0.62f, 1f));
-        backToTitleButton = CreateButton("ResultBackToTitleButton", backgroundPanel.rectTransform, "タイトルに戻る", new Vector2(0f, -590f), new Vector2(520f, 86f), new Color(0.20f, 0.78f, 0.48f));
+        titleText = CreateText("ResultTitleText", backgroundPanel.rectTransform, "清浄リザルト", new Vector2(0f, 525f), new Vector2(900f, 126f), 68, new Color(1f, 0.95f, 0.24f), TextAnchor.MiddleCenter);
+        normalScoreText = CreateText("ResultNormalScoreText", backgroundPanel.rectTransform, string.Empty, new Vector2(0f, 405f), new Vector2(900f, 100f), 56, Color.white, TextAnchor.MiddleCenter);
+        bonusContainer = CreateRect("ResultInfoContainer", backgroundPanel.rectTransform, new Vector2(0f, 120f), new Vector2(920f, 460f));
+        totalScoreText = CreateText("ResultTotalScoreText", backgroundPanel.rectTransform, string.Empty, new Vector2(0f, -138f), new Vector2(900f, 96f), 60, new Color(0.54f, 0.94f, 1f), TextAnchor.MiddleCenter);
+        rankText = CreateText("ResultRankText", backgroundPanel.rectTransform, string.Empty, new Vector2(0f, -295f), new Vector2(960f, 174f), 118, new Color(1f, 0.42f, 0.18f), TextAnchor.MiddleCenter);
+        restartButton = CreateButton("ResultRestartButton", backgroundPanel.rectTransform, "リスタート", new Vector2(0f, -475f), new Vector2(560f, 92f), new Color(0.18f, 0.62f, 1f));
+        backToTitleButton = CreateButton("ResultBackToTitleButton", backgroundPanel.rectTransform, "タイトルに戻る", new Vector2(0f, -585f), new Vector2(560f, 92f), new Color(0.20f, 0.78f, 0.48f));
         restartButton.onClick.AddListener(OnRestartButtonClicked);
         backToTitleButton.onClick.AddListener(OnBackToTitleButtonClicked);
         SetResultButtonsVisible(false);
@@ -183,23 +183,20 @@ public class ResultController : MonoBehaviour
         fadePanel.gameObject.SetActive(false);
     }
 
-    private IEnumerator PlayResult(int normalScore, int reachedLevel, PurifierStage reachedStage, int maxCombo, int mistakeCount, int bombHitCount)
+    private IEnumerator PlayResult(int baseCleanScore, int highestReachedLevel, PurifierStage highestReachedStage, int maxCombo, bool hasAbsorbedDog, bool hasAbsorbedCat, bool hasTakenDamage)
     {
         BuildUi();
         ResetViews();
         isResultSequencePlaying = true;
 
-        var bonuses = BuildBonuses(reachedLevel, reachedStage, maxCombo, mistakeCount, bombHitCount);
+        var bonuses = BuildBonuses(highestReachedLevel, highestReachedStage, maxCombo, hasAbsorbedDog, hasAbsorbedCat, hasTakenDamage);
         var bonusTotal = 0;
         for (var i = 0; i < bonuses.Count; i++)
         {
-            if (bonuses[i].Achieved)
-            {
-                bonusTotal += bonuses[i].Score;
-            }
+            bonusTotal += bonuses[i].Score;
         }
 
-        var finalScore = normalScore + bonusTotal;
+        var finalScore = baseCleanScore + bonusTotal;
         var rank = GetRank(finalScore);
         SetRankBackground(rank);
 
@@ -224,27 +221,21 @@ public class ResultController : MonoBehaviour
         backgroundPanel.gameObject.SetActive(true);
         PlayResultScoreStartSeOnce();
 
-        normalScoreText.text = $"清浄量  {normalScore:N0}pt";
+        normalScoreText.text = $"清浄量  {baseCleanScore:N0}pt";
         yield return PlayTextIn(normalScoreText, scoreItemInterval);
 
-        var infoRows = new[]
+        for (var i = 0; i < bonuses.Count; i++)
         {
-            $"最大コンボ  {maxCombo:N0}",
-            $"到達ステージ  {GetStageDisplayName(reachedStage)}",
-            $"到達Lv  {reachedLevel}",
-        };
-        for (var i = 0; i < infoRows.Length; i++)
-        {
-            var row = CreateBonusRow(bonusRows.Count, infoRows[i]);
+            var row = CreateBonusRow(bonusRows.Count, bonuses[i].DisplayName);
             bonusRows.Add(row);
             yield return PlayTextIn(row, scoreItemInterval);
         }
 
-        totalScoreText.text = $"TOTAL  {finalScore:N0}";
+        totalScoreText.text = $"合計  {finalScore:N0}pt";
         yield return PlayTextIn(totalScoreText, scoreItemInterval);
 
         yield return new WaitForSecondsRealtime(Mathf.Max(0f, rankRevealDelay));
-        rankText.text = $"清浄RANK {rank}";
+        rankText.text = FormatRankRevealText(rank);
         yield return PlayRankReveal(rankText);
 
         ShowResultButtons();
@@ -252,63 +243,40 @@ public class ResultController : MonoBehaviour
         resultRoutine = null;
     }
 
-    private List<ResultBonus> BuildBonuses(int reachedLevel, PurifierStage reachedStage, int maxCombo, int mistakeCount, int bombHitCount)
+    private List<ResultBonus> BuildBonuses(int reachedLevel, PurifierStage reachedStage, int maxCombo, bool hasAbsorbedDog, bool hasAbsorbedCat, bool hasTakenDamage)
     {
         var bonuses = new List<ResultBonus>();
-
-        if (reachedLevel >= 12)
+        var comboBonus = Mathf.Max(0, maxCombo) * 100;
+        if (comboBonus > 0)
         {
-            bonuses.Add(new ResultBonus("到達Lvボーナス", 50000, true));
-        }
-        else if (reachedLevel >= 10)
-        {
-            bonuses.Add(new ResultBonus("到達Lvボーナス", 30000, true));
-        }
-        else if (reachedLevel >= 7)
-        {
-            bonuses.Add(new ResultBonus("到達Lvボーナス", 15000, true));
-        }
-        else if (reachedLevel >= 4)
-        {
-            bonuses.Add(new ResultBonus("到達Lvボーナス", 5000, true));
+            bonuses.Add(new ResultBonus($"Combo Bonus {maxCombo}×100 = {comboBonus}pt", comboBonus, true));
         }
 
-        if (maxCombo >= 100)
+        if (!hasAbsorbedDog && !hasAbsorbedCat)
         {
-            bonuses.Add(new ResultBonus("最大コンボボーナス", 30000, true));
-        }
-        else if (maxCombo >= 50)
-        {
-            bonuses.Add(new ResultBonus("最大コンボボーナス", 15000, true));
-        }
-        else if (maxCombo >= 20)
-        {
-            bonuses.Add(new ResultBonus("最大コンボボーナス", 5000, true));
+            bonuses.Add(new ResultBonus("動物愛護 Bonus 5000pt", 5000, true));
         }
 
         switch (reachedStage)
         {
             case PurifierStage.Space:
-                bonuses.Add(new ResultBonus("宇宙到達ボーナス", 30000, true));
+                bonuses.Add(new ResultBonus("宇宙到達 Bonus 25000pt", 25000, true));
                 break;
             case PurifierStage.City:
-                bonuses.Add(new ResultBonus("都市到達ボーナス", 15000, true));
+                bonuses.Add(new ResultBonus("上空到達 Bonus 10000pt", 10000, true));
                 break;
             case PurifierStage.Street:
-                bonuses.Add(new ResultBonus("街到達ボーナス", 5000, true));
+                bonuses.Add(new ResultBonus("街到達 Bonus 5000pt", 5000, true));
                 break;
         }
 
-        var totalMistakes = mistakeCount + bombHitCount;
-        if (totalMistakes == 0)
+        if (!hasTakenDamage)
         {
-            bonuses.Add(new ResultBonus("清浄精度ボーナス", 30000, true));
-        }
-        else if (totalMistakes <= 3)
-        {
-            bonuses.Add(new ResultBonus("清浄精度ボーナス", 10000, true));
+            bonuses.Add(new ResultBonus("ノーダメージ Bonus 20000pt", 20000, true));
         }
 
+        var levelBonus = Mathf.Max(0, reachedLevel) * 1000;
+        bonuses.Add(new ResultBonus($"LV到達 Bonus {reachedLevel}×1000 = {levelBonus}pt", levelBonus, true));
         return bonuses;
     }
 
@@ -373,6 +341,31 @@ public class ResultController : MonoBehaviour
         }
     }
 
+    private static string FormatRankRevealText(string rank)
+    {
+        return $"<color=#FFFFFF>清浄RANK </color>{GetRankColorText(rank)}";
+    }
+
+    private static string GetRankColorText(string rank)
+    {
+        switch (rank)
+        {
+            case "SS":
+                return "<color=#FF4B4B>S</color><color=#30A8FF>S</color>";
+            case "S":
+                return "<color=#FFD700>S</color>";
+            case "A":
+                return "<color=#FF3B30>A</color>";
+            case "B":
+                return "<color=#34C759>B</color>";
+            case "C":
+                return "<color=#FFD43B>C</color>";
+            case "D":
+            default:
+                return "<color=#30A8FF>D</color>";
+        }
+    }
+
     private static string GetStageDisplayName(PurifierStage stage)
     {
         switch (stage)
@@ -392,8 +385,8 @@ public class ResultController : MonoBehaviour
 
     private Text CreateBonusRow(int index, string text)
     {
-        var y = 120f - index * 82f;
-        return CreateText("ResultInfoText", bonusContainer, text, new Vector2(0f, y), new Vector2(760f, 70f), 38, new Color(1f, 0.94f, 0.56f), TextAnchor.MiddleCenter);
+        var y = 165f - index * 78f;
+        return CreateText("ResultInfoText", bonusContainer, text, new Vector2(0f, y), new Vector2(900f, 74f), 42, new Color(1f, 0.94f, 0.56f), TextAnchor.MiddleCenter);
     }
 
     private void ResetViews()
@@ -570,6 +563,7 @@ public class ResultController : MonoBehaviour
         label.alignment = alignment;
         label.color = color;
         label.raycastTarget = false;
+        label.supportRichText = true;
 
         var outline = rect.gameObject.AddComponent<Outline>();
         outline.effectColor = new Color(0f, 0f, 0f, 0.92f);
