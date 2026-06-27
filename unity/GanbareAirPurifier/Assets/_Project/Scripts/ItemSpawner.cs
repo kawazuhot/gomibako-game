@@ -24,6 +24,9 @@ public class ItemSpawner : MonoBehaviour
     private float topLaneSpawnTimer;
     private float bottomLaneSpawnTimer;
     private float nextNoCandidateLogTime;
+    private float activeSpawnX;
+    private float activeDespawnX;
+    private ItemFlowDirection flowDirection = ItemFlowDirection.RightToLeft;
 
     public void Configure(GameManager manager, RectTransform layer, ItemController template)
     {
@@ -40,9 +43,10 @@ public class ItemSpawner : MonoBehaviour
                 item.ResetForPool();
                 item.gameObject.SetActive(false);
             });
+        RefreshFlowDirection();
         topLaneSpawnTimer = 0.15f;
         bottomLaneSpawnTimer = 0.55f;
-        Debug.Log($"[ItemSpawner] Item pool initialized. InitialSize={initialPoolSize}");
+        Debug.Log($"[ItemSpawner] Item pool initialized. InitialSize={initialPoolSize}, FlowDirection={FlowDirectionSettings.GetDisplayName(flowDirection)}");
     }
 
     public void BeginCountdownSpawn()
@@ -95,8 +99,25 @@ public class ItemSpawner : MonoBehaviour
         }
         var item = itemPool.Get();
         var duration = Mathf.Max(2.2f, moveDuration - gameManager.CurrentSuctionLevel * 0.18f);
-        item.Initialize(data, gameManager.CurrentSuctionLevel, new Vector2(spawnX, laneY), despawnX, duration, gameManager.HandleItemMissed);
+        item.Initialize(data, gameManager.CurrentSuctionLevel, new Vector2(activeSpawnX, laneY), activeDespawnX, duration, gameManager.HandleItemMissed);
         gameManager.RegisterItem(item);
+    }
+
+    private void RefreshFlowDirection()
+    {
+        flowDirection = FlowDirectionSettings.Load();
+        var leftX = Mathf.Min(spawnX, despawnX);
+        var rightX = Mathf.Max(spawnX, despawnX);
+
+        if (flowDirection == ItemFlowDirection.LeftToRight)
+        {
+            activeSpawnX = leftX;
+            activeDespawnX = rightX;
+            return;
+        }
+
+        activeSpawnX = rightX;
+        activeDespawnX = leftX;
     }
 
     public void ReleaseItem(ItemController item)
